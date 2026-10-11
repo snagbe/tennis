@@ -380,10 +380,9 @@ import { firebaseConfig } from "./config.js";
 // Regeln. Standardwerte, werden vom Admin in Firestore («settings/config») überschrieben.
 const PRIO_TEXT = {
   plays: "Wer bisher weniger gespielt hat, kommt zuerst.",
-  avail: "Wer ab diesem Termin an weniger Freitagen kann, kommt zuerst.",
-  signup: "Wer sich zuerst eingetragen hat, kommt zuerst."
+  avail: "Wer ab diesem Termin an weniger Freitagen kann, kommt zuerst."
 };
-const PRIO_LABEL = { plays: "Weniger gespielt zuerst", avail: "Weniger verfügbar zuerst", signup: "Früher eingetragen zuerst" };
+const PRIO_LABEL = { plays: "Weniger gespielt zuerst", avail: "Weniger verfügbar zuerst" };
 const DEFAULTS = { cap: 6, start: "2026-10-16", end: "2027-04-09", costTotal: 3600, minPresent: 4, prio: ["plays", "avail"] };
 let S = Object.assign({}, DEFAULTS, { prio: DEFAULTS.prio.slice() });
 const dates = [];
@@ -398,7 +397,7 @@ function normSettings(v) {
   if (o.end < o.start) { o.start = DEFAULTS.start; o.end = DEFAULTS.end; }
   if (typeof v.costTotal === "number" && isFinite(v.costTotal) && v.costTotal >= 0 && v.costTotal <= 1000000) o.costTotal = v.costTotal;
   if (int(v.minPresent, 0, 20)) o.minPresent = v.minPresent;
-  if (Array.isArray(v.prio)) o.prio = v.prio.filter((k, n, a) => (k === "plays" || k === "avail" || k === "signup") && a.indexOf(k) === n);
+  if (Array.isArray(v.prio)) o.prio = v.prio.filter((k, n, a) => (k === "plays" || k === "avail") && a.indexOf(k) === n);
   return o;
 }
 function rebuildDates() {
@@ -466,9 +465,15 @@ function nameList(entries, fallback) {
 // Verteilung der Plätze, Freitag für Freitag der Reihe nach. Wer "Ich kann" gewählt hat, wird sortiert nach:
 //   1. wer bisher weniger gespielt hat (festgehaltene Termine plus bisher berechnete)
 //   2. wer ab diesem Termin an weniger Freitagen kann (Anzahl "Ich kann" ab diesem Termin)
-//   3. wer sich zuerst eingetragen hat
+//   3. Zufall (pro Termin und Person fest, damit alle dieselbe Aufstellung sehen)
 // Die ersten S.cap spielen, der Rest ist Reserve. Vergangene Termine werden aus "results" gelesen,
 // sobald sie festgehalten sind. Dann ändern spätere Eintragungen sie nicht mehr.
+function luck(d, uid) {
+  let h = 2166136261;
+  const s = d + "|" + uid;
+  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; }
+  return h;
+}
 function compute() {
   const counts = {}, out = {}, stats = {}, toFreeze = [], today = iso(new Date());
   docs.forEach((v, id) => { stats[id] = { played: 0, planned: 0, signed: 0 }; });
@@ -492,13 +497,12 @@ function compute() {
     const a = availFrom[d];
     const cmp = {
       plays: (x, y) => (counts[x.uid] || 0) - (counts[y.uid] || 0),
-      avail: (x, y) => (a[x.uid] || 0) - (a[y.uid] || 0),
-      signup: (x, y) => x.t - y.t
+      avail: (x, y) => (a[x.uid] || 0) - (a[y.uid] || 0)
     };
     const order = S.prio.map((k) => cmp[k]);
     av.sort((x, y) => {
       for (let n = 0; n < order.length; n++) { const r = order[n](x, y); if (r) return r; }
-      return x.t - y.t || (x.uid < y.uid ? -1 : 1);
+      return luck(d, x.uid) - luck(d, y.uid) || (x.uid < y.uid ? -1 : 1);
     });
     const going = av.slice(0, S.cap), reserve = av.slice(S.cap);
     going.forEach((e) => {
@@ -694,9 +698,9 @@ function renderAdmin() {
   body.appendChild(field("admEnd", "Letzter Termin", "date", S.end));
   body.appendChild(field("admCost", "Kosten gesamt (Fr.)", "number", S.costTotal, { min: 0, step: "0.05", inputmode: "decimal" }));
   body.appendChild(field("admMin", "Weniger Spielende als … : alle zahlen", "number", S.minPresent, { min: 0, max: 20, inputmode: "numeric" }));
-  body.appendChild(el("p", "hint", "Reihenfolge der Verteilung. Oben gilt zuerst. Bei Gleichstand entscheidet zuletzt der Zeitpunkt der Eintragung."));
+  body.appendChild(el("p", "hint", "Reihenfolge der Verteilung. Oben gilt zuerst. Bei Gleichstand entscheidet zuletzt der Zufall."));
   const pr = el("div", "prio");
-  const all = adminDraft.prio.concat(["plays", "avail", "signup"].filter((k) => adminDraft.prio.indexOf(k) < 0));
+  const all = adminDraft.prio.concat(["plays", "avail"].filter((k) => adminDraft.prio.indexOf(k) < 0));
   all.forEach((k, n) => {
     const on = adminDraft.prio.indexOf(k) >= 0;
     const row = el("div", "prow");
@@ -779,11 +783,10 @@ function renderRules() {
   $("howIntro").textContent = "Trag dich für alle Termine ein, an denen du kannst. Pro Termin spielen " + S.cap + " Personen. Die Reihenfolge ist:";
   const box = $("howRules"); box.replaceChildren();
   const list = S.prio.slice();
-  if (list.indexOf("signup") < 0) list.push("signup");
   list.forEach((k, n) => {
-    const text = k === "signup" && S.prio.indexOf("signup") < 0 ? "Zuletzt entscheidet, wer sich zuerst eingetragen hat." : PRIO_TEXT[k];
-    box.appendChild(el("p", null, (n + 1) + ". " + text));
+    box.appendChild(el("p", null, (n + 1) + ". " + PRIO_TEXT[k]));
   });
+  box.appendChild(el("p", null, (list.length + 1) + ". Zuletzt entscheidet der Zufall."));
 }
 
 function render() {
