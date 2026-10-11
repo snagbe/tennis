@@ -1,0 +1,524 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tennis Freitagstraining</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&display=swap">
+<style>
+:root {
+  color-scheme: light;
+  --bg: #eef2ef;
+  --surface: #fbfcfb;
+  --ink: #14231d;
+  --muted: #566860;
+  --line: #d3ddd7;
+  --accent: #1b6b4f;
+  --accent-ink: #ffffff;
+  --ball: #c9dc2b;
+  --reserve: #b4462f;
+  --reserve-bg: #f6e3de;
+  --font-display: "Barlow Condensed", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
+  --font-body: "Barlow", "Helvetica Neue", Arial, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --bg: #0f1713;
+    --surface: #17211c;
+    --ink: #e6efe9;
+    --muted: #93a59b;
+    --line: #28352e;
+    --accent: #4fc08f;
+    --accent-ink: #0b1a13;
+    --ball: #d6e84a;
+    --reserve: #e58a74;
+    --reserve-bg: #3a211b;
+  }
+}
+* { box-sizing: border-box; }
+html { background: var(--bg); }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.45;
+  padding-inline: 16px;
+  padding-block: calc(28px + env(safe-area-inset-top, 0px)) calc(56px + env(safe-area-inset-bottom, 0px));
+}
+.wrap { max-width: 760px; margin-inline: auto; display: flex; flex-direction: column; gap: 20px; }
+header { display: flex; flex-direction: column; gap: 6px; }
+.eyebrow { font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+h1 { font-family: var(--font-display); font-weight: 700; font-size: clamp(2.4rem, 9vw, 3.6rem); line-height: 0.95; margin: 0; text-wrap: balance; }
+.sub { color: var(--muted); margin: 0; max-width: 62ch; }
+.me-line { margin: 0; font-weight: 500; }
+.banner { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; font-size: 14px; color: var(--muted); }
+.banner[hidden] { display: none; }
+h2 { font-family: var(--font-display); font-weight: 600; font-size: 1.5rem; letter-spacing: 0.04em; text-transform: uppercase; margin: 0; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+.panel[hidden] { display: none; }
+.panel .hint { margin: 0; font-size: 14px; color: var(--muted); }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 13px; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.sw { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+.sw.played { background: var(--ink); }
+.sw.planned { background: var(--accent); }
+.people { display: flex; flex-direction: column; gap: 10px; }
+.person { display: grid; grid-template-columns: 7rem minmax(0, 1fr); gap: 4px 12px; align-items: center; }
+.person .pname { font-weight: 600; overflow-wrap: anywhere; }
+.person .pname.me { color: var(--accent); }
+.bar { display: flex; height: 14px; border-radius: 4px; overflow: hidden; background: var(--bg); border: 1px solid var(--line); }
+.bar .played { background: var(--ink); }
+.bar .planned { background: var(--accent); }
+.pnums { grid-column: 2; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.pnums b { color: var(--ink); font-weight: 600; }
+.who { display: flex; flex-wrap: wrap; gap: 8px; }
+.who button, .filters button, .linkbtn {
+  font: inherit; font-size: 14px; font-weight: 600; color: var(--ink); background: transparent;
+  border: 1px solid var(--line); border-radius: 999px; padding: 8px 16px; cursor: pointer;
+}
+.linkbtn { padding: 2px 10px; font-size: 13px; margin-left: 8px; }
+.newname { display: flex; gap: 8px; flex-wrap: wrap; }
+.newname input {
+  flex: 1 1 12rem; min-width: 0; font: inherit; font-size: 16px; padding: 10px 12px; border-radius: 8px;
+  border: 1px solid var(--line); background: var(--bg); color: var(--ink);
+}
+.newname button { font: inherit; font-weight: 600; padding: 10px 18px; border-radius: 8px; border: 1.5px solid var(--accent); background: var(--accent); color: var(--accent-ink); cursor: pointer; }
+.filters { display: flex; gap: 8px; flex-wrap: wrap; }
+.filters button { padding: 6px 14px; }
+.filters button[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+button:focus-visible, summary:focus-visible, input:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+h3.month { font-family: var(--font-display); font-weight: 600; font-size: 1.3rem; letter-spacing: 0.04em; text-transform: uppercase; margin: 14px 0 0; color: var(--muted); }
+.list { display: flex; flex-direction: column; gap: 8px; }
+.row {
+  background: var(--surface); border: 1px solid var(--line); border-radius: 10px;
+  display: grid; grid-template-columns: 4.2rem minmax(0, 1fr) auto; gap: 8px 14px; align-items: center;
+  padding: 12px 14px;
+}
+.row.next { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.date { display: flex; flex-direction: column; align-items: flex-start; line-height: 1; }
+.date .dow { font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+.date .day { font-family: var(--font-display); font-weight: 700; font-size: 2.5rem; font-variant-numeric: tabular-nums; }
+.date .mon { font-size: 13px; color: var(--muted); }
+.mid { min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.seats { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.dot { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--line); background: transparent; }
+.dot.taken { background: var(--ink); border-color: var(--ink); }
+.dot.mine { background: var(--ball); border-color: var(--ball); box-shadow: 0 0 0 2px var(--ink); }
+.count { font-family: var(--font-display); font-weight: 600; font-size: 1.15rem; margin-left: 6px; font-variant-numeric: tabular-nums; }
+.pill { font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; }
+.pill.next { background: var(--accent); color: var(--accent-ink); }
+.pill.over { background: var(--reserve-bg); color: var(--reserve); }
+.names { font-size: 14px; color: var(--muted); overflow-wrap: anywhere; margin: 0; }
+.names strong { color: var(--ink); font-weight: 600; }
+.status { font-size: 14px; font-weight: 600; margin: 0; }
+.status.res { color: var(--reserve); }
+.act button {
+  font: inherit; font-weight: 600; font-size: 15px; border-radius: 8px; padding: 10px 16px; cursor: pointer;
+  min-width: 9.5rem; border: 1.5px solid var(--accent); background: var(--accent); color: var(--accent-ink);
+}
+.act button.ghost { background: transparent; color: var(--ink); border-color: var(--line); }
+.act button.ghost:hover { border-color: var(--reserve); color: var(--reserve); }
+.act button:disabled { opacity: 0.5; cursor: default; }
+.empty { color: var(--muted); padding: 24px 0; text-align: center; margin: 0; }
+details.past { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+details.past[hidden] { display: none; }
+details.past summary { cursor: pointer; font-weight: 600; }
+.pastlist { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+.pastrow { display: grid; grid-template-columns: 5.5rem minmax(0, 1fr); gap: 10px; font-size: 14px; }
+.pastrow .pd { color: var(--muted); font-variant-numeric: tabular-nums; }
+.pastrow .pn { overflow-wrap: anywhere; }
+.toast { position: sticky; bottom: calc(12px + env(safe-area-inset-bottom, 0px)); background: var(--ink); color: var(--bg); padding: 10px 14px; border-radius: 8px; font-size: 14px; }
+.toast[hidden] { display: none; }
+.foot { font-size: 13px; color: var(--muted); margin: 0; }
+@media (max-width: 540px) {
+  .row { grid-template-columns: 3.4rem minmax(0, 1fr); }
+  .act { grid-column: 1 / -1; }
+  .act button { width: 100%; }
+  .person { grid-template-columns: minmax(0, 1fr); }
+  .pnums { grid-column: 1; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Tennis · jeden Freitag · 16.10.2026 bis 30.04.2027</div>
+    <h1>Freitagstraining</h1>
+    <p class="sub">Trag dich für alle Freitage ein, an denen du kannst. Pro Termin spielen 6 Personen. Wer bisher weniger gespielt hat, kommt zuerst dran, damit alle ungefähr gleich oft spielen. Die Aufteilung passt sich laufend an, wenn sich jemand ein- oder austrägt.</p>
+    <p class="me-line" id="meLine" hidden></p>
+  </header>
+
+  <div class="banner" id="banner">Eintragungen werden geladen …</div>
+
+  <section class="panel" id="whoPanel" hidden aria-labelledby="whoTitle">
+    <h2 id="whoTitle">Wer bist du?</h2>
+    <div class="who" id="whoList"></div>
+    <form class="newname" id="newForm">
+      <input id="newName" type="text" maxlength="30" autocomplete="off" placeholder="Neuer Name, z. B. Sandra">
+      <button type="submit">Weiter</button>
+    </form>
+    <p class="hint">Dein Name wird auf diesem Gerät gespeichert. Du kannst ihn oben jederzeit wechseln.</p>
+  </section>
+
+  <section class="panel" aria-labelledby="fairTitle">
+    <h2 id="fairTitle">Wer spielt wie oft</h2>
+    <div class="legend">
+      <span><i class="sw played"></i>Bisher gespielt</span>
+      <span><i class="sw planned"></i>Voraussichtlich noch</span>
+    </div>
+    <div class="people" id="people"></div>
+    <p class="hint" id="peopleHint"></p>
+  </section>
+
+  <div class="filters" role="group" aria-label="Termine filtern">
+    <button type="button" data-filter="all" aria-pressed="true">Alle</button>
+    <button type="button" data-filter="free" aria-pressed="false">Weniger als 6</button>
+    <button type="button" data-filter="mine" aria-pressed="false">Meine</button>
+  </div>
+
+  <div class="list" id="list"></div>
+
+  <details class="past" id="past" hidden>
+    <summary id="pastSummary">Vergangene Termine</summary>
+    <div class="pastlist" id="pastList"></div>
+  </details>
+
+  <div class="toast" id="toast" role="status" hidden></div>
+  <p class="foot">Bei gleichem Stand entscheidet, wer sich zuerst eingetragen hat. Vergangene Termine bleiben unverändert.</p>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+import { getFirestore, collection, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+
+// ===== HIER DEINE FIREBASE-WERTE EINFÜGEN (Schritt 3 der Anleitung) =====
+const firebaseConfig = {
+  apiKey: "DEIN_API_KEY",
+  authDomain: "DEIN_PROJEKT.firebaseapp.com",
+  projectId: "DEIN_PROJEKT",
+  storageBucket: "DEIN_PROJEKT.firebasestorage.app",
+  messagingSenderId: "DEINE_ID",
+  appId: "DEINE_APP_ID"
+};
+// ========================================================================
+
+const CAP = 6;
+const dates = [];
+(function () {
+  let d = new Date(2026, 9, 16);
+  const end = new Date(2027, 3, 30);
+  while (d <= end) { dates.push(iso(d)); d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 7); }
+})();
+function iso(d) {
+  const m = d.getMonth() + 1, day = d.getDate();
+  return d.getFullYear() + "-" + (m < 10 ? "0" : "") + m + "-" + (day < 10 ? "0" : "") + day;
+}
+function parse(s) { const p = s.split("-"); return new Date(+p[0], +p[1] - 1, +p[2]); }
+function slug(n) { return n.trim().toLowerCase().replace(/[^a-z0-9äöüéèà]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40); }
+
+const $ = (id) => document.getElementById(id);
+const $list = $("list"), $banner = $("banner"), $meLine = $("meLine"), $toast = $("toast");
+const $people = $("people"), $peopleHint = $("peopleHint"), $past = $("past"), $pastList = $("pastList"), $pastSummary = $("pastSummary");
+const $whoPanel = $("whoPanel"), $whoList = $("whoList");
+
+let db = null, configured = true;
+let docs = new Map();      // id -> { name, dates: { "YYYY-MM-DD": timestamp } }
+let me = null, myName = "";
+let loaded = false, filter = "all";
+const busy = {};
+let chain = Promise.resolve();
+let toastTimer = null;
+
+try { me = localStorage.getItem("tennis-me"); myName = localStorage.getItem("tennis-name") || ""; } catch (e) {}
+
+function toast(msg) {
+  $toast.textContent = msg; $toast.hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { $toast.hidden = true; }, 6000);
+}
+function el(tag, cls, text) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text != null) e.textContent = text;
+  return e;
+}
+function nameOf(id) { return id === me ? "Du" : ((docs.get(id) && docs.get(id).name) || "Jemand"); }
+function labelOf(id) { return (docs.get(id) && docs.get(id).name) || myName || "Jemand"; }
+function nameList(entries) {
+  const p = el("span");
+  entries.forEach((e, k) => {
+    p.appendChild(el(e.uid === me ? "strong" : "span", null, nameOf(e.uid)));
+    if (k < entries.length - 1) p.appendChild(document.createTextNode(", "));
+  });
+  return p;
+}
+
+// Faire Verteilung: Freitage der Reihe nach. Wer sich eingetragen hat, wird nach bisherigen Einsätzen
+// (wenigste zuerst), dann nach Eintragungszeit sortiert. Die ersten 6 spielen, der Rest ist Reserve.
+function compute() {
+  const counts = {}, out = {}, stats = {}, today = iso(new Date());
+  docs.forEach((v, id) => { stats[id] = { played: 0, planned: 0, signed: 0 }; });
+  dates.forEach((d) => {
+    const av = [];
+    docs.forEach((v, id) => { if (v.dates && typeof v.dates[d] === "number") av.push({ uid: id, t: v.dates[d] }); });
+    av.sort((a, b) => (counts[a.uid] || 0) - (counts[b.uid] || 0) || a.t - b.t || (a.uid < b.uid ? -1 : 1));
+    const going = av.slice(0, CAP), reserve = av.slice(CAP);
+    going.forEach((e) => {
+      counts[e.uid] = (counts[e.uid] || 0) + 1;
+      if (d < today) stats[e.uid].played++; else stats[e.uid].planned++;
+    });
+    if (d >= today) av.forEach((e) => { stats[e.uid].signed++; });
+    out[d] = { going, reserve };
+  });
+  return { out, stats, today };
+}
+
+function renderPeople(c) {
+  $people.replaceChildren();
+  const ids = Object.keys(c.stats);
+  if (!ids.length) { $peopleHint.textContent = "Sobald sich jemand einträgt, siehst du hier, wer wie oft spielt."; return; }
+  ids.sort((a, b) => {
+    const sa = c.stats[a], sb = c.stats[b];
+    return (sb.played + sb.planned) - (sa.played + sa.planned) || sb.played - sa.played || labelOf(a).localeCompare(labelOf(b), "de");
+  });
+  let max = 1;
+  ids.forEach((id) => { max = Math.max(max, c.stats[id].played + c.stats[id].planned); });
+  ids.forEach((id) => {
+    const s = c.stats[id];
+    const p = el("div", "person");
+    p.appendChild(el("div", "pname" + (id === me ? " me" : ""), nameOf(id)));
+    const bar = el("div", "bar");
+    const a = el("div", "played"); a.style.width = (s.played / max * 100) + "%";
+    const b = el("div", "planned"); b.style.width = (s.planned / max * 100) + "%";
+    bar.appendChild(a); bar.appendChild(b);
+    p.appendChild(bar);
+    const n = el("div", "pnums");
+    n.appendChild(document.createTextNode("gespielt "));
+    n.appendChild(el("b", null, String(s.played)));
+    n.appendChild(document.createTextNode(" · voraussichtlich noch "));
+    n.appendChild(el("b", null, String(s.planned)));
+    n.appendChild(document.createTextNode(" · für " + s.signed + " kommende Termine eingetragen"));
+    p.appendChild(n);
+    $people.appendChild(p);
+  });
+  $peopleHint.textContent = "Die Zahl bei «voraussichtlich» ändert sich, sobald sich jemand ein- oder austrägt. Gespielt zählt nur für vergangene Freitage.";
+}
+
+function renderWho() {
+  const show = configured && loaded && !me;
+  $whoPanel.hidden = !show;
+  if (!show) return;
+  $whoList.replaceChildren();
+  Array.from(docs.entries())
+    .sort((a, b) => (a[1].name || "").localeCompare(b[1].name || "", "de"))
+    .forEach(([id, v]) => {
+      const b = el("button", null, v.name || id);
+      b.type = "button";
+      b.dataset.id = id;
+      $whoList.appendChild(b);
+    });
+}
+
+function render() {
+  const c = compute();
+  const today = c.today;
+  const canWrite = !!(db && me);
+  const upcoming = dates.filter((d) => d >= today);
+  const past = dates.filter((d) => d < today);
+  $list.replaceChildren();
+  renderPeople(c);
+  renderWho();
+
+  if (me && loaded) {
+    const s = c.stats[me] || { played: 0, planned: 0, signed: 0 };
+    $meLine.textContent = "Du bist " + (myName || labelOf(me)) + ". Bisher " + s.played + "× gespielt, für " + s.signed +
+      " kommende Termine eingetragen, voraussichtlich spielst du an " + s.planned + " davon.";
+    const sw = el("button", "linkbtn", "Wechseln");
+    sw.type = "button"; sw.id = "switchBtn";
+    $meLine.appendChild(sw);
+    $meLine.hidden = false;
+  } else { $meLine.hidden = true; }
+
+  let lastMonth = "", shown = 0;
+  upcoming.forEach((d, idx) => {
+    const r = c.out[d];
+    const isGoing = r.going.some((e) => e.uid === me);
+    const resIdx = r.reserve.findIndex((e) => e.uid === me);
+    const mineState = isGoing ? "going" : (resIdx >= 0 ? "res" : "none");
+    if (filter === "mine" && mineState === "none") return;
+    if (filter === "free" && r.going.length >= CAP) return;
+
+    const dt = parse(d);
+    const monthKey = dt.toLocaleDateString("de-DE", { month: "long", year: "numeric" });
+    if (monthKey !== lastMonth) { $list.appendChild(el("h3", "month", monthKey)); lastMonth = monthKey; }
+    shown++;
+
+    const row = el("div", "row" + (idx === 0 ? " next" : ""));
+    const date = el("div", "date");
+    date.appendChild(el("span", "dow", "Fr"));
+    date.appendChild(el("span", "day", String(dt.getDate())));
+    date.appendChild(el("span", "mon", dt.toLocaleDateString("de-DE", { month: "short" })));
+    row.appendChild(date);
+
+    const mid = el("div", "mid");
+    const seats = el("div", "seats");
+    for (let i = 0; i < CAP; i++) {
+      let cls = "dot";
+      if (i < r.going.length) cls += r.going[i].uid === me ? " taken mine" : " taken";
+      seats.appendChild(el("span", cls));
+    }
+    seats.appendChild(el("span", "count", r.going.length + " / " + CAP));
+    if (idx === 0) seats.appendChild(el("span", "pill next", "Nächstes Training"));
+    if (r.reserve.length) seats.appendChild(el("span", "pill over", r.reserve.length + " in Reserve"));
+    mid.appendChild(seats);
+
+    const n1 = el("p", "names");
+    if (r.going.length) { n1.appendChild(document.createTextNode("Spielen: ")); n1.appendChild(nameList(r.going)); }
+    else n1.textContent = "Noch niemand eingetragen.";
+    mid.appendChild(n1);
+    if (r.reserve.length) {
+      const n2 = el("p", "names");
+      n2.appendChild(document.createTextNode("Reserve: "));
+      n2.appendChild(nameList(r.reserve));
+      mid.appendChild(n2);
+    }
+    if (mineState === "going") mid.appendChild(el("p", "status", "Du spielst voraussichtlich."));
+    if (mineState === "res") mid.appendChild(el("p", "status res", "Du bist Reserve (Platz " + (resIdx + 1) + ") und rückst nach, wenn jemand absagt."));
+    row.appendChild(mid);
+
+    const act = el("div", "act");
+    const btn = el("button");
+    btn.type = "button";
+    btn.dataset.date = d;
+    if (mineState === "none") btn.textContent = "Ich kann";
+    else { btn.textContent = "Ich kann nicht mehr"; btn.className = "ghost"; }
+    btn.disabled = !canWrite || !!busy[d];
+    act.appendChild(btn);
+    row.appendChild(act);
+    $list.appendChild(row);
+  });
+
+  if (!shown) {
+    $list.appendChild(el("p", "empty",
+      filter === "mine" ? "Du bist noch für keinen Termin eingetragen." :
+      filter === "free" ? "Alle kommenden Termine sind mit 6 Personen besetzt." : "Keine kommenden Termine."));
+  }
+
+  $pastList.replaceChildren();
+  const pastShown = past.filter((d) => c.out[d].going.length);
+  $past.hidden = !pastShown.length;
+  $pastSummary.textContent = "Vergangene Termine (" + pastShown.length + ")";
+  pastShown.slice().reverse().forEach((d) => {
+    const pr = el("div", "pastrow");
+    pr.appendChild(el("div", "pd", parse(d).toLocaleDateString("de-DE", { weekday: "short", day: "2-digit", month: "2-digit" })));
+    const pn = el("div", "pn");
+    pn.appendChild(nameList(c.out[d].going));
+    pr.appendChild(pn);
+    $pastList.appendChild(pr);
+  });
+
+  if (!configured) {
+    $banner.textContent = "Die Firebase-Werte fehlen noch in der Datei index.html. Siehe Schritt 3 der Anleitung.";
+    $banner.hidden = false;
+  } else if (!loaded) {
+    $banner.textContent = "Eintragungen werden geladen …";
+    $banner.hidden = false;
+  } else if (!me) {
+    $banner.textContent = "Wähle unten deinen Namen, dann kannst du dich eintragen.";
+    $banner.hidden = false;
+  } else { $banner.hidden = true; }
+}
+
+function save(id, data) {
+  chain = chain.then(() => setDoc(doc(db, "signups", id), data)).catch(() => {
+    toast("Das Speichern hat nicht geklappt. Prüfe deine Verbindung und versuche es noch einmal.");
+  });
+  return chain;
+}
+
+function toggle(date) {
+  if (!db || !me || busy[date] || date < iso(new Date())) return;
+  const cur = docs.get(me) || { name: myName, dates: {} };
+  const next = Object.assign({}, cur.dates || {});
+  if (typeof next[date] === "number") delete next[date]; else next[date] = Date.now();
+  const data = { name: cur.name || myName, dates: next };
+  docs.set(me, data);
+  busy[date] = true;
+  render();
+  save(me, data).then(() => { delete busy[date]; render(); });
+}
+
+function choose(id, name) {
+  me = id; myName = name;
+  try { localStorage.setItem("tennis-me", id); localStorage.setItem("tennis-name", name); } catch (e) {}
+  if (!docs.has(id)) {
+    const data = { name, dates: {} };
+    docs.set(id, data);
+    save(id, data);
+  }
+  render();
+}
+
+$list.addEventListener("click", (ev) => {
+  const b = ev.target.closest("button[data-date]");
+  if (b) toggle(b.dataset.date);
+});
+document.querySelector(".filters").addEventListener("click", (ev) => {
+  const b = ev.target.closest("button[data-filter]");
+  if (!b) return;
+  filter = b.dataset.filter;
+  document.querySelectorAll(".filters button").forEach((x) => x.setAttribute("aria-pressed", x === b ? "true" : "false"));
+  render();
+});
+$whoList.addEventListener("click", (ev) => {
+  const b = ev.target.closest("button[data-id]");
+  if (b) choose(b.dataset.id, b.textContent);
+});
+$("newForm").addEventListener("submit", (ev) => {
+  ev.preventDefault();
+  const input = $("newName");
+  const name = input.value.trim();
+  const id = slug(name);
+  if (!name || !id) { toast("Bitte gib einen Namen ein."); return; }
+  input.value = "";
+  choose(id, docs.has(id) ? docs.get(id).name : name);
+});
+$meLine.addEventListener("click", (ev) => {
+  if (ev.target.id !== "switchBtn") return;
+  me = null; myName = "";
+  try { localStorage.removeItem("tennis-me"); localStorage.removeItem("tennis-name"); } catch (e) {}
+  render();
+});
+
+configured = !!firebaseConfig.apiKey && !firebaseConfig.apiKey.startsWith("DEIN");
+render();
+
+if (configured) {
+  try {
+    const app = initializeApp(firebaseConfig);
+    db = getFirestore(app);
+    onSnapshot(collection(db, "signups"), (snap) => {
+      const next = new Map();
+      snap.forEach((d) => {
+        const v = d.data();
+        if (v && typeof v.name === "string") next.set(d.id, { name: v.name, dates: (v.dates && typeof v.dates === "object") ? v.dates : {} });
+      });
+      docs = next; loaded = true;
+      render();
+    }, () => {
+      loaded = true;
+      toast("Die Eintragungen konnten nicht geladen werden. Prüfe die Firestore-Regeln (Schritt 4).");
+      render();
+    });
+  } catch (e) {
+    toast("Firebase konnte nicht gestartet werden. Prüfe die Werte in index.html.");
+  }
+}
+</script>
+</body>
+</html>
