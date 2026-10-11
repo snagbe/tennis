@@ -183,6 +183,16 @@ details.past summary { cursor: pointer; font-weight: 600; }
 /* Verwalten */
 #panel-personen { display: flex; flex-direction: column; gap: 14px; }
 #panel-personen[hidden] { display: none; }
+.adminbox > summary { cursor: pointer; font-weight: 700; min-height: 44px; display: flex; align-items: center; }
+#adminBody { display: flex; flex-direction: column; gap: 12px; padding-top: 6px; }
+#adminBody label { display: flex; flex-direction: column; gap: 4px; font-size: 14px; color: var(--muted); }
+#adminBody input[type=text], #adminBody input[type=email], #adminBody input[type=password], #adminBody input[type=number], #adminBody input[type=date] { min-height: 46px; font: inherit; font-size: 16px; padding: 0 12px; border-radius: 8px; border: 2px solid var(--line); background: var(--bg); color: var(--ink); }
+#adminBody button { min-height: 46px; font: inherit; font-weight: 600; padding: 0 14px; border-radius: 8px; border: 2px solid var(--accent); background: transparent; color: var(--ink); cursor: pointer; }
+#adminBody button.primary { background: var(--accent); color: var(--accent-ink); }
+#adminBody .prio { display: flex; flex-direction: column; gap: 8px; }
+#adminBody .prow { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; gap: 8px; align-items: center; border: 1px solid var(--line); border-radius: 8px; padding: 8px; background: var(--bg); }
+#adminBody .prow input { width: 22px; height: 22px; }
+#adminBody .prow button { min-height: 40px; min-width: 40px; padding: 0; }
 .manage { display: flex; flex-direction: column; gap: 10px; }
 .mrow {
   display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px 12px; align-items: center;
@@ -254,7 +264,7 @@ details.past summary { cursor: pointer; font-weight: 600; }
 <body>
 <div class="wrap">
   <header>
-    <div class="eyebrow">Tennis · jeden Freitag · 16.10.2026 bis 09.04.2027</div>
+    <div class="eyebrow" id="eyebrow">Tennis</div>
     <h1>Freitagstraining</h1>
   </header>
 
@@ -294,13 +304,13 @@ details.past summary { cursor: pointer; font-weight: 600; }
     <section class="tabpanel" id="panel-termine" role="tabpanel" aria-labelledby="tab-termine">
       <details class="how">
         <summary>So wird verteilt</summary>
-        <p>Trag dich für alle Freitage ein, an denen du kannst. Pro Termin spielen 6 Personen. Die Reihenfolge ist:</p>
-        <p>1. Wer bisher weniger gespielt hat, kommt zuerst.<br>2. Bei gleich vielen Spielen kommt zuerst, wer ab diesem Termin an weniger Freitagen kann.<br>3. Bei weiterem Gleichstand zählt, wer sich zuerst eingetragen hat.</p>
+        <p id="howIntro"></p>
+        <div id="howRules"></div>
         <p>Die Aufteilung passt sich laufend an, wenn sich jemand ein- oder austrägt. Nach einem Termin wird die Aufstellung festgehalten und bleibt unverändert.</p>
       </details>
       <div class="filters" role="group" aria-label="Termine filtern">
         <button type="button" data-filter="all" aria-pressed="true">Alle</button>
-        <button type="button" data-filter="free" aria-pressed="false">Weniger als 6</button>
+        <button type="button" id="filterFree" data-filter="free" aria-pressed="false">Weniger als 6</button>
         <button type="button" data-filter="mine" aria-pressed="false">Meine</button>
       </div>
       <div class="list" id="list"></div>
@@ -339,6 +349,10 @@ details.past summary { cursor: pointer; font-weight: 600; }
         <p class="hint">Löschen entfernt eine Person mit allen ihren Antworten und lässt sich nicht rückgängig machen. Bereits festgehaltene vergangene Termine bleiben unverändert, kommende Termine werden neu verteilt.</p>
         <div class="manage" id="manageList"></div>
       </section>
+      <details class="panel adminbox" id="adminBox">
+        <summary>Regeln (nur Admin)</summary>
+        <div id="adminBody"></div>
+      </details>
 
     </section>
 
@@ -358,22 +372,47 @@ details.past summary { cursor: pointer; font-weight: 600; }
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
 import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
 
 // Die Firebase-Werte stehen in der separaten Datei config.js.
 import { firebaseConfig } from "./config.js";
 
-const CAP = 6;
+// Regeln. Standardwerte, werden vom Admin in Firestore («settings/config») überschrieben.
+const PRIO_TEXT = {
+  plays: "Wer bisher weniger gespielt hat, kommt zuerst.",
+  avail: "Wer ab diesem Termin an weniger Freitagen kann, kommt zuerst.",
+  signup: "Wer sich zuerst eingetragen hat, kommt zuerst."
+};
+const PRIO_LABEL = { plays: "Weniger gespielt zuerst", avail: "Weniger verfügbar zuerst", signup: "Früher eingetragen zuerst" };
+const DEFAULTS = { cap: 6, start: "2026-10-16", end: "2027-04-09", costTotal: 3600, minPresent: 4, prio: ["plays", "avail"] };
+let S = Object.assign({}, DEFAULTS, { prio: DEFAULTS.prio.slice() });
 const dates = [];
-(function () {
-  let d = new Date(2026, 9, 16);
-  const end = new Date(2027, 3, 9);
-  while (d <= end) { dates.push(iso(d)); d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 7); }
-})();
+function validDate(x) { return typeof x === "string" && /^\d{4}-\d{2}-\d{2}$/.test(x) && iso(parse(x)) === x; }
+function normSettings(v) {
+  const o = Object.assign({}, DEFAULTS, { prio: DEFAULTS.prio.slice() });
+  if (!v || typeof v !== "object") return o;
+  const int = (x, lo, hi) => (typeof x === "number" && isFinite(x) && Math.floor(x) === x && x >= lo && x <= hi);
+  if (int(v.cap, 1, 20)) o.cap = v.cap;
+  if (validDate(v.start)) o.start = v.start;
+  if (validDate(v.end)) o.end = v.end;
+  if (o.end < o.start) { o.start = DEFAULTS.start; o.end = DEFAULTS.end; }
+  if (typeof v.costTotal === "number" && isFinite(v.costTotal) && v.costTotal >= 0 && v.costTotal <= 1000000) o.costTotal = v.costTotal;
+  if (int(v.minPresent, 0, 20)) o.minPresent = v.minPresent;
+  if (Array.isArray(v.prio)) o.prio = v.prio.filter((k, n, a) => (k === "plays" || k === "avail" || k === "signup") && a.indexOf(k) === n);
+  return o;
+}
+function rebuildDates() {
+  dates.length = 0;
+  let d = parse(S.start);
+  const end = parse(S.end);
+  while (d <= end && dates.length < 80) { dates.push(iso(d)); d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 7); }
+}
 function iso(d) {
   const m = d.getMonth() + 1, day = d.getDate();
   return d.getFullYear() + "-" + (m < 10 ? "0" : "") + m + "-" + (day < 10 ? "0" : "") + day;
 }
 function parse(s) { const p = s.split("-"); return new Date(+p[0], +p[1] - 1, +p[2]); }
+rebuildDates();
 function slug(n) { return n.trim().toLowerCase().replace(/[^a-z0-9äöüéèà]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40); }
 
 const $ = (id) => document.getElementById(id);
@@ -383,8 +422,7 @@ const $whoList = $("whoList");
 const $idBar = $("idBar"), $idName = $("idName"), $idAvatar = $("idAvatar");
 const TABS = ["termine", "statistik", "personen", "kosten"];
 const $costSum = $("costSum"), $costList = $("costList"), $costHint = $("costHint");
-// Kosten: Hallenmiete gesamt, Hallensaison bis zu diesem Datum, ab so wenigen Anwesenden zahlen alle.
-const COST_TOTAL = 3600, HALL_END = "2027-04-09", MIN_PRESENT = 4;
+
 const $manageList = $("manageList");
 let confirmDel = null;
 
@@ -425,11 +463,11 @@ function nameList(entries, fallback) {
   return p;
 }
 
-// Verteilung der 6 Plätze, Freitag für Freitag der Reihe nach. Wer "Ich kann" gewählt hat, wird sortiert nach:
+// Verteilung der Plätze, Freitag für Freitag der Reihe nach. Wer "Ich kann" gewählt hat, wird sortiert nach:
 //   1. wer bisher weniger gespielt hat (festgehaltene Termine plus bisher berechnete)
 //   2. wer ab diesem Termin an weniger Freitagen kann (Anzahl "Ich kann" ab diesem Termin)
 //   3. wer sich zuerst eingetragen hat
-// Die ersten 6 spielen, der Rest ist Reserve. Vergangene Termine werden aus "results" gelesen,
+// Die ersten S.cap spielen, der Rest ist Reserve. Vergangene Termine werden aus "results" gelesen,
 // sobald sie festgehalten sind. Dann ändern spätere Eintragungen sie nicht mehr.
 function compute() {
   const counts = {}, out = {}, stats = {}, toFreeze = [], today = iso(new Date());
@@ -452,11 +490,17 @@ function compute() {
     const av = [];
     docs.forEach((v, id) => { if (isYes(v, d)) av.push({ uid: id, t: v.dates[d] }); });
     const a = availFrom[d];
-    av.sort((x, y) =>
-      (counts[x.uid] || 0) - (counts[y.uid] || 0) ||
-      (a[x.uid] || 0) - (a[y.uid] || 0) ||
-      x.t - y.t || (x.uid < y.uid ? -1 : 1));
-    const going = av.slice(0, CAP), reserve = av.slice(CAP);
+    const cmp = {
+      plays: (x, y) => (counts[x.uid] || 0) - (counts[y.uid] || 0),
+      avail: (x, y) => (a[x.uid] || 0) - (a[y.uid] || 0),
+      signup: (x, y) => x.t - y.t
+    };
+    const order = S.prio.map((k) => cmp[k]);
+    av.sort((x, y) => {
+      for (let n = 0; n < order.length; n++) { const r = order[n](x, y); if (r) return r; }
+      return x.t - y.t || (x.uid < y.uid ? -1 : 1);
+    });
+    const going = av.slice(0, S.cap), reserve = av.slice(S.cap);
     going.forEach((e) => {
       counts[e.uid] = (counts[e.uid] || 0) + 1;
       if (d < today) stats[e.uid].played++; else stats[e.uid].planned++;
@@ -586,16 +630,16 @@ function presentOn(d, c) {
 }
 function renderCosts(c) {
   $costSum.replaceChildren(); $costList.replaceChildren();
-  const sessions = dates.filter((d) => d <= HALL_END);
+  const sessions = dates.filter((d) => d <= S.end);
   const everyone = Array.from(docs.keys());
   if (!loaded || !everyone.length || !sessions.length) { $costHint.textContent = "Sobald Personen eingetragen sind, siehst du hier die Kosten."; return; }
-  const perSession = COST_TOTAL / sessions.length;
+  const perSession = S.costTotal / sessions.length;
   const paid = {}, planned = {}, cnt = {};
   everyone.forEach((id) => { paid[id] = 0; planned[id] = 0; cnt[id] = 0; });
   const allPayDays = [];
   sessions.forEach((d) => {
     const present = presentOn(d, c).filter((id) => docs.has(id));
-    const allPay = present.length < MIN_PRESENT;
+    const allPay = present.length < S.minPresent;
     const payers = allPay ? everyone : present;
     if (allPay) allPayDays.push(d);
     if (!payers.length) return;
@@ -604,7 +648,7 @@ function renderCosts(c) {
     payers.forEach((id) => { if (isPast) paid[id] += share; else planned[id] += share; cnt[id]++; });
   });
   const box = (label, val) => { const b = el("div"); b.appendChild(el("span", null, label)); b.appendChild(el("strong", null, val)); return b; };
-  $costSum.appendChild(box("Gesamt", chf(COST_TOTAL)));
+  $costSum.appendChild(box("Gesamt", chf(S.costTotal)));
   $costSum.appendChild(box("Pro Termin", chf(perSession)));
   $costSum.appendChild(box("Termine", String(sessions.length)));
   everyone.sort((a, b) => (paid[b] + planned[b]) - (paid[a] + planned[a]) || nameOf(a).localeCompare(nameOf(b), "de"));
@@ -616,10 +660,97 @@ function renderCosts(c) {
     $costList.appendChild(row);
   });
 
-  $costHint.textContent = "Es zahlen die Personen, die sich mit «Ich kann» eingetragen haben und laut Aufstellung spielen (Reserve zahlt nicht). Sind weniger als " + MIN_PRESENT + " da, zahlen alle " + everyone.length +
-    ". Die Hallenmiete von " + chf(COST_TOTAL) + " (letzter Termin Fr 09.04.2027) wird gleichmässig auf " + sessions.length +
+  $costHint.textContent = "Es zahlen die Personen, die sich mit «Ich kann» eingetragen haben und laut Aufstellung spielen (Reserve zahlt nicht). Sind weniger als " + S.minPresent + " da, zahlen alle " + everyone.length +
+    ". Die Hallenmiete von " + chf(S.costTotal) + " (letzter Termin " + fmtDay(S.end) + ") wird gleichmässig auf " + sessions.length +
     " Freitage verteilt. Abgerechnet wird am Schluss. «Stand heute» zählt vergangene Termine, die Prognose die kommenden.";
 }
+
+let authUser = null, adminDraft = null, adminErr = "";
+function renderAdmin() {
+  const body = $("adminBody");
+  body.replaceChildren();
+  if (!db) { body.appendChild(el("p", "hint", "Noch nicht mit der Datenbank verbunden.")); return; }
+  if (!authUser) {
+    body.appendChild(el("p", "hint", "Nur der Admin darf die Regeln ändern. Melde dich dafür an."));
+    const f = el("form"); f.id = "adminLogin"; f.style.cssText = "display:flex;flex-direction:column;gap:10px";
+    const em = el("input"); em.type = "email"; em.id = "admEmail"; em.placeholder = "E-Mail"; em.autocomplete = "username";
+    const pw = el("input"); pw.type = "password"; pw.id = "admPass"; pw.placeholder = "Passwort"; pw.autocomplete = "current-password";
+    const b = el("button", "primary", "Anmelden"); b.type = "submit";
+    f.appendChild(em); f.appendChild(pw); f.appendChild(b);
+    body.appendChild(f);
+    if (adminErr) body.appendChild(el("p", "hint", adminErr));
+    return;
+  }
+  if (!adminDraft) adminDraft = { prio: S.prio.slice() };
+  const field = (id, label, type, value, attrs) => {
+    const l = el("label", null, label);
+    const i = el("input"); i.type = type; i.id = id; i.value = value;
+    if (attrs) Object.keys(attrs).forEach((k) => i.setAttribute(k, attrs[k]));
+    l.appendChild(i); return l;
+  };
+  body.appendChild(el("p", "hint", "Angemeldet. Änderungen gelten sofort für alle."));
+  body.appendChild(field("admCap", "Plätze pro Termin", "number", S.cap, { min: 1, max: 20, inputmode: "numeric" }));
+  body.appendChild(field("admStart", "Erster Termin", "date", S.start));
+  body.appendChild(field("admEnd", "Letzter Termin", "date", S.end));
+  body.appendChild(field("admCost", "Kosten gesamt (Fr.)", "number", S.costTotal, { min: 0, step: "0.05", inputmode: "decimal" }));
+  body.appendChild(field("admMin", "Weniger Spielende als … : alle zahlen", "number", S.minPresent, { min: 0, max: 20, inputmode: "numeric" }));
+  body.appendChild(el("p", "hint", "Reihenfolge der Verteilung. Oben gilt zuerst. Bei Gleichstand entscheidet zuletzt der Zeitpunkt der Eintragung."));
+  const pr = el("div", "prio");
+  const all = adminDraft.prio.concat(["plays", "avail", "signup"].filter((k) => adminDraft.prio.indexOf(k) < 0));
+  all.forEach((k, n) => {
+    const on = adminDraft.prio.indexOf(k) >= 0;
+    const row = el("div", "prow");
+    const cb = el("input"); cb.type = "checkbox"; cb.checked = on; cb.dataset.pcheck = k; cb.setAttribute("aria-label", PRIO_LABEL[k]);
+    row.appendChild(cb);
+    row.appendChild(el("span", null, PRIO_LABEL[k]));
+    const up = el("button", null, "▲"); up.type = "button"; up.dataset.pup = k; up.disabled = !on || adminDraft.prio.indexOf(k) === 0; up.setAttribute("aria-label", "nach oben");
+    const dn = el("button", null, "▼"); dn.type = "button"; dn.dataset.pdown = k; dn.disabled = !on || adminDraft.prio.indexOf(k) === adminDraft.prio.length - 1; dn.setAttribute("aria-label", "nach unten");
+    row.appendChild(up); row.appendChild(dn);
+    pr.appendChild(row);
+  });
+  body.appendChild(pr);
+  if (adminErr) body.appendChild(el("p", "hint", adminErr));
+  const save = el("button", "primary", "Speichern"); save.type = "button"; save.id = "admSave";
+  const out = el("button", null, "Abmelden"); out.type = "button"; out.id = "admOut";
+  body.appendChild(save); body.appendChild(out);
+}
+function adminSave() {
+  const num = (id) => Number($(id).value);
+  const v = { cap: num("admCap"), start: $("admStart").value, end: $("admEnd").value, costTotal: num("admCost"), minPresent: num("admMin"), prio: adminDraft.prio.slice() };
+  const n = normSettings(v);
+  if (n.cap !== v.cap || n.start !== v.start || n.end !== v.end || n.costTotal !== v.costTotal || n.minPresent !== v.minPresent) {
+    adminErr = "Bitte prüfe die Werte (Plätze 1–20, Termine als Datum, letzter Termin nicht vor dem ersten)."; renderAdmin(); return;
+  }
+  adminErr = "";
+  chain = chain.then(() => setDoc(doc(db, "settings", "config"), v))
+    .then(() => toast("Regeln gespeichert."))
+    .catch(() => toast("Speichern nicht erlaubt. Prüfe die Firestore-Regeln für «settings» und die Admin-E-Mail."));
+}
+$("adminBody").addEventListener("submit", (ev) => {
+  if (ev.target.id !== "adminLogin") return;
+  ev.preventDefault();
+  adminErr = "";
+  signInWithEmailAndPassword(getAuth(), $("admEmail").value.trim(), $("admPass").value)
+    .catch(() => { adminErr = "Anmeldung fehlgeschlagen."; renderAdmin(); });
+});
+$("adminBody").addEventListener("click", (ev) => {
+  const t = ev.target;
+  if (t.id === "admSave") { adminSave(); return; }
+  if (t.id === "admOut") { signOut(getAuth()); return; }
+  const k = t.dataset && (t.dataset.pup || t.dataset.pdown);
+  if (k && adminDraft) {
+    const a = adminDraft.prio, i = a.indexOf(k), j = t.dataset.pup ? i - 1 : i + 1;
+    if (i >= 0 && j >= 0 && j < a.length) { a.splice(i, 1); a.splice(j, 0, k); renderAdmin(); }
+  }
+});
+$("adminBody").addEventListener("change", (ev) => {
+  const k = ev.target.dataset && ev.target.dataset.pcheck;
+  if (!k || !adminDraft) return;
+  const a = adminDraft.prio, i = a.indexOf(k);
+  if (ev.target.checked && i < 0) a.push(k);
+  if (!ev.target.checked && i >= 0) a.splice(i, 1);
+  renderAdmin();
+});
 
 function removePerson(id) {
   if (!db) return;
@@ -641,7 +772,22 @@ function showTab() {
   });
 }
 
+function fmtShort(d) { return parse(d).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" }); }
+function renderRules() {
+  $("eyebrow").textContent = "Tennis · jeden " + parse(S.start).toLocaleDateString("de-DE", { weekday: "long" }) + " · " + fmtShort(S.start) + " bis " + fmtShort(S.end);
+  $("filterFree").textContent = "Weniger als " + S.cap;
+  $("howIntro").textContent = "Trag dich für alle Termine ein, an denen du kannst. Pro Termin spielen " + S.cap + " Personen. Die Reihenfolge ist:";
+  const box = $("howRules"); box.replaceChildren();
+  const list = S.prio.slice();
+  if (list.indexOf("signup") < 0) list.push("signup");
+  list.forEach((k, n) => {
+    const text = k === "signup" && S.prio.indexOf("signup") < 0 ? "Zuletzt entscheidet, wer sich zuerst eingetragen hat." : PRIO_TEXT[k];
+    box.appendChild(el("p", null, (n + 1) + ". " + text));
+  });
+}
+
 function render() {
+  renderRules();
   const c = compute();
   const today = c.today;
   const canWrite = !!(db && me);
@@ -675,7 +821,7 @@ function render() {
     const myVal = (docs.get(me) && docs.get(me).dates) ? docs.get(me).dates[d] : undefined;
     const mineState = isGoing ? "going" : (resIdx >= 0 ? "res" : (myVal === 0 ? "no" : "none"));
     if (filter === "mine" && (mineState === "none" || mineState === "no")) return;
-    if (filter === "free" && r.going.length >= CAP) return;
+    if (filter === "free" && r.going.length >= S.cap) return;
     const noList = [], openList = [];
     docs.forEach((v, id) => {
       const t = v.dates ? v.dates[d] : undefined;
@@ -699,12 +845,12 @@ function render() {
 
     const mid = el("div", "mid");
     const seats = el("div", "seats");
-    for (let i = 0; i < CAP; i++) {
+    for (let i = 0; i < S.cap; i++) {
       let cls = "dot";
       if (i < r.going.length) cls += r.going[i].uid === me ? " taken mine" : " taken";
       seats.appendChild(el("span", cls));
     }
-    seats.appendChild(el("span", "count", r.going.length + " / " + CAP));
+    seats.appendChild(el("span", "count", r.going.length + " / " + S.cap));
     if (idx === 0) seats.appendChild(el("span", "pill next", "Nächstes Training"));
     if (r.reserve.length) seats.appendChild(el("span", "pill over", r.reserve.length + " in Reserve"));
     mid.appendChild(seats);
@@ -754,7 +900,7 @@ function render() {
   if (!shown) {
     $list.appendChild(el("p", "empty",
       filter === "mine" ? "Du bist noch für keinen Termin eingetragen." :
-      filter === "free" ? "Alle kommenden Termine sind mit 6 Personen besetzt." : "Keine kommenden Termine."));
+      filter === "free" ? "Alle kommenden Termine sind mit " + S.cap + " Personen besetzt." : "Keine kommenden Termine."));
   }
 
   $pastList.replaceChildren();
@@ -863,6 +1009,7 @@ $("switchBtn").addEventListener("click", () => {
   window.scrollTo(0, 0);
 });
 
+renderAdmin();
 configured = !!firebaseConfig.apiKey && !firebaseConfig.apiKey.startsWith("DEIN");
 render();
 
@@ -870,6 +1017,13 @@ if (configured) {
   try {
     const app = initializeApp(firebaseConfig);
     db = getFirestore(app);
+    onAuthStateChanged(getAuth(app), (u) => { authUser = u; adminDraft = null; adminErr = ""; renderAdmin(); });
+    onSnapshot(doc(db, "settings", "config"), (snap) => {
+      S = normSettings(snap.exists() ? snap.data() : null);
+      rebuildDates();
+      adminDraft = null;
+      render(); renderAdmin();
+    }, () => {});
     onSnapshot(collection(db, "signups"), (snap) => {
       const next = new Map();
       snap.forEach((d) => {
