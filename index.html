@@ -50,7 +50,7 @@ body {
   font-size: 16px;
   line-height: 1.45;
   padding-inline: 16px;
-  padding-block: calc(20px + env(safe-area-inset-top, 0px)) calc(100px + env(safe-area-inset-bottom, 0px));
+  padding-block: calc(20px + env(safe-area-inset-top, 0px)) calc(40px + env(safe-area-inset-bottom, 0px));
 }
 .wrap { max-width: 760px; margin-inline: auto; display: flex; flex-direction: column; gap: 16px; }
 header { display: flex; flex-direction: column; gap: 4px; }
@@ -183,25 +183,27 @@ details.past summary { cursor: pointer; font-weight: 600; }
 /* Meldung */
 .toast {
   position: fixed; left: 16px; right: 16px; margin-inline: auto; max-width: 728px; z-index: 20;
-  bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
   background: var(--ink); color: var(--bg); padding: 10px 14px; border-radius: 8px; font-size: 14px;
 }
 .toast[hidden] { display: none; }
 
-/* Reiter unten */
+/* Reiter oben, bleiben beim Scrollen sichtbar */
 .tabbar {
-  position: fixed; left: 0; right: 0; bottom: 0; z-index: 10;
-  background: var(--surface); border-top: 1px solid var(--line);
-  padding-bottom: env(safe-area-inset-bottom, 0px);
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 10;
+  background: var(--bg); padding-block: 6px;
 }
-.tabbar .in { max-width: 760px; margin-inline: auto; display: grid; grid-template-columns: repeat(3, 1fr); }
+.tabbar .in {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;
+  background: var(--surface); border: 2px solid var(--accent); border-radius: 14px; padding: 5px;
+}
 .tabbar button {
-  min-height: 62px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
-  font: inherit; font-size: 13px; font-weight: 600; background: transparent; border: 0; border-top: 3px solid transparent;
-  color: var(--muted); cursor: pointer;
+  min-height: 54px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+  font: inherit; font-size: 14px; font-weight: 600; background: transparent; border: 0; border-radius: 9px;
+  color: var(--ink); cursor: pointer;
 }
-.tabbar button svg { width: 24px; height: 24px; }
-.tabbar button[aria-selected="true"] { color: var(--accent); border-top-color: var(--accent); }
+.tabbar button svg { width: 22px; height: 22px; }
+.tabbar button[aria-selected="true"] { background: var(--accent); color: var(--accent-ink); }
 
 @media (max-width: 540px) {
   .row { grid-template-columns: 3.4rem minmax(0, 1fr); }
@@ -218,6 +220,23 @@ details.past summary { cursor: pointer; font-weight: 600; }
     <div class="eyebrow">Tennis · jeden Freitag · 16.10.2026 bis 30.04.2027</div>
     <h1>Freitagstraining</h1>
   </header>
+
+  <nav class="tabbar" aria-label="Bereiche">
+    <div class="in" role="tablist">
+      <button type="button" role="tab" id="tab-termine" data-tab="termine" aria-selected="true" aria-controls="panel-termine">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
+        Termine
+      </button>
+      <button type="button" role="tab" id="tab-statistik" data-tab="statistik" aria-selected="false" aria-controls="panel-statistik">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 20V10M12 20V4M19 20v-7"/></svg>
+        Statistik
+      </button>
+      <button type="button" role="tab" id="tab-personen" data-tab="personen" aria-selected="false" aria-controls="panel-personen">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6"/><circle cx="17.5" cy="9" r="2.5"/><path d="M17.5 14c2.5 0 4 1.7 4 4.5"/></svg>
+        Personen
+      </button>
+    </div>
+  </nav>
 
   <section class="idbar" id="idBar" hidden aria-label="Aktuelle Person">
     <div class="avatar" id="idAvatar" aria-hidden="true"></div>
@@ -277,23 +296,6 @@ details.past summary { cursor: pointer; font-weight: 600; }
 
   <div class="toast" id="toast" role="status" hidden></div>
 </div>
-
-<nav class="tabbar" aria-label="Bereiche">
-  <div class="in" role="tablist">
-    <button type="button" role="tab" id="tab-termine" data-tab="termine" aria-selected="true" aria-controls="panel-termine">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
-      Termine
-    </button>
-    <button type="button" role="tab" id="tab-statistik" data-tab="statistik" aria-selected="false" aria-controls="panel-statistik">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 20V10M12 20V4M19 20v-7"/></svg>
-      Statistik
-    </button>
-    <button type="button" role="tab" id="tab-personen" data-tab="personen" aria-selected="false" aria-controls="panel-personen">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6"/><circle cx="17.5" cy="9" r="2.5"/><path d="M17.5 14c2.5 0 4 1.7 4 4.5"/></svg>
-      Personen
-    </button>
-  </div>
-</nav>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
