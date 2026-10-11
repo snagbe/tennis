@@ -81,7 +81,24 @@ h2 { font-family: var(--font-display); font-weight: 600; font-size: 1.5rem; lett
   font: inherit; font-size: 14px; font-weight: 600; color: var(--ink); background: transparent;
   border: 1px solid var(--line); border-radius: 999px; padding: 8px 16px; cursor: pointer;
 }
-.linkbtn { padding: 2px 10px; font-size: 13px; margin-left: 8px; }
+.idbar {
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 8px 14px; align-items: center;
+  background: var(--surface); border: 2px solid var(--accent); border-radius: 12px; padding: 12px 14px;
+}
+.idbar[hidden] { display: none; }
+.avatar {
+  width: 44px; height: 44px; border-radius: 50%; background: var(--ball); color: #1d2a05;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-display); font-weight: 700; font-size: 1.6rem; line-height: 1;
+}
+.idtext { min-width: 0; display: flex; flex-direction: column; line-height: 1.2; }
+.idlabel { font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+.idtext strong { font-family: var(--font-display); font-size: 1.6rem; font-weight: 700; overflow-wrap: anywhere; }
+.switch {
+  font: inherit; font-weight: 600; font-size: 15px; min-height: 44px; padding: 10px 18px; border-radius: 8px; cursor: pointer;
+  border: 1.5px solid var(--accent); background: transparent; color: var(--accent);
+}
+.you { margin-left: 8px; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; background: var(--ball); color: #1d2a05; vertical-align: middle; }
 .newname { display: flex; gap: 8px; flex-wrap: wrap; }
 .newname input {
   flex: 1 1 12rem; min-width: 0; font: inherit; font-size: 16px; padding: 10px 12px; border-radius: 8px;
@@ -136,6 +153,8 @@ details.past summary { cursor: pointer; font-weight: 600; }
 .toast[hidden] { display: none; }
 .foot { font-size: 13px; color: var(--muted); margin: 0; }
 @media (max-width: 540px) {
+  .idbar { grid-template-columns: auto minmax(0, 1fr); }
+  .switch { grid-column: 1 / -1; width: 100%; }
   .row { grid-template-columns: 3.4rem minmax(0, 1fr); }
   .act { grid-column: 1 / -1; }
   .act button { width: 100%; }
@@ -150,8 +169,17 @@ details.past summary { cursor: pointer; font-weight: 600; }
     <div class="eyebrow">Tennis · jeden Freitag · 16.10.2026 bis 30.04.2027</div>
     <h1>Freitagstraining</h1>
     <p class="sub">Trag dich für alle Freitage ein, an denen du kannst. Pro Termin spielen 6 Personen. Wer bisher weniger gespielt hat, kommt zuerst dran, damit alle ungefähr gleich oft spielen. Die Aufteilung passt sich laufend an, wenn sich jemand ein- oder austrägt.</p>
-    <p class="me-line" id="meLine" hidden></p>
   </header>
+
+  <section class="idbar" id="idBar" hidden aria-label="Aktuelle Person">
+    <div class="avatar" id="idAvatar" aria-hidden="true"></div>
+    <div class="idtext">
+      <span class="idlabel">Du trägst dich ein als</span>
+      <strong id="idName"></strong>
+    </div>
+    <button type="button" id="switchBtn" class="switch">Person wechseln</button>
+  </section>
+  <p class="me-line" id="meLine" hidden></p>
 
   <div class="banner" id="banner">Eintragungen werden geladen …</div>
 
@@ -196,17 +224,8 @@ details.past summary { cursor: pointer; font-weight: 600; }
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
 import { getFirestore, collection, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 
-// ===== HIER DEINE FIREBASE-WERTE EINFÜGEN (Schritt 3 der Anleitung) =====
-const firebaseConfig = {
-  apiKey: "AIzaSyB8aULeAOB3w1e0GHCA58LHqqCJvS_yHmc",
-  authDomain: "tennis-training-b79b8.firebaseapp.com",
-  projectId: "tennis-training-b79b8",
-  storageBucket: "tennis-training-b79b8.firebasestorage.app",
-  messagingSenderId: "999070828921",
-  appId: "1:999070828921:web:c727ec846ac4b49d5f47a8",
-  measurementId: "G-VPFYHEQXCP"
-};
-// ========================================================================
+// Die Firebase-Werte stehen in der separaten Datei config.js.
+import { firebaseConfig } from "./config.js";
 
 const CAP = 6;
 const dates = [];
@@ -226,6 +245,7 @@ const $ = (id) => document.getElementById(id);
 const $list = $("list"), $banner = $("banner"), $meLine = $("meLine"), $toast = $("toast");
 const $people = $("people"), $peopleHint = $("peopleHint"), $past = $("past"), $pastList = $("pastList"), $pastSummary = $("pastSummary");
 const $whoPanel = $("whoPanel"), $whoList = $("whoList");
+const $idBar = $("idBar"), $idName = $("idName"), $idAvatar = $("idAvatar");
 
 let db = null, configured = true;
 let docs = new Map();      // id -> { name, dates: { "YYYY-MM-DD": timestamp } }
@@ -248,8 +268,9 @@ function el(tag, cls, text) {
   if (text != null) e.textContent = text;
   return e;
 }
-function nameOf(id) { return id === me ? "Du" : ((docs.get(id) && docs.get(id).name) || "Jemand"); }
-function labelOf(id) { return (docs.get(id) && docs.get(id).name) || myName || "Jemand"; }
+function nameOf(id) { return (docs.get(id) && docs.get(id).name) || (id === me && myName) || "Jemand"; }
+function labelOf(id) { return nameOf(id); }
+function termine(n) { return n === 1 ? "1 kommenden Termin" : n + " kommende Termine"; }
 function nameList(entries) {
   const p = el("span");
   entries.forEach((e, k) => {
@@ -292,7 +313,9 @@ function renderPeople(c) {
   ids.forEach((id) => {
     const s = c.stats[id];
     const p = el("div", "person");
-    p.appendChild(el("div", "pname" + (id === me ? " me" : ""), nameOf(id)));
+    const pn = el("div", "pname" + (id === me ? " me" : ""), nameOf(id));
+    if (id === me) pn.appendChild(el("span", "you", "Du"));
+    p.appendChild(pn);
     const bar = el("div", "bar");
     const a = el("div", "played"); a.style.width = (s.played / max * 100) + "%";
     const b = el("div", "planned"); b.style.width = (s.planned / max * 100) + "%";
@@ -303,7 +326,7 @@ function renderPeople(c) {
     n.appendChild(el("b", null, String(s.played)));
     n.appendChild(document.createTextNode(" · voraussichtlich noch "));
     n.appendChild(el("b", null, String(s.planned)));
-    n.appendChild(document.createTextNode(" · für " + s.signed + " kommende Termine eingetragen"));
+    n.appendChild(document.createTextNode(" · für " + termine(s.signed) + " eingetragen"));
     p.appendChild(n);
     $people.appendChild(p);
   });
@@ -335,13 +358,16 @@ function render() {
   renderPeople(c);
   renderWho();
 
+  if (me) {
+    const shownName = nameOf(me);
+    $idName.textContent = shownName;
+    $idAvatar.textContent = shownName.charAt(0).toUpperCase();
+    $idBar.hidden = false;
+  } else { $idBar.hidden = true; }
   if (me && loaded) {
     const s = c.stats[me] || { played: 0, planned: 0, signed: 0 };
-    $meLine.textContent = "Du bist " + (myName || labelOf(me)) + ". Bisher " + s.played + "× gespielt, für " + s.signed +
-      " kommende Termine eingetragen, voraussichtlich spielst du an " + s.planned + " davon.";
-    const sw = el("button", "linkbtn", "Wechseln");
-    sw.type = "button"; sw.id = "switchBtn";
-    $meLine.appendChild(sw);
+    $meLine.textContent = "Bisher " + s.played + "× gespielt. Du bist für " + termine(s.signed) +
+      " eingetragen und spielst voraussichtlich an " + s.planned + " davon.";
     $meLine.hidden = false;
   } else { $meLine.hidden = true; }
 
@@ -489,8 +515,7 @@ $("newForm").addEventListener("submit", (ev) => {
   input.value = "";
   choose(id, docs.has(id) ? docs.get(id).name : name);
 });
-$meLine.addEventListener("click", (ev) => {
-  if (ev.target.id !== "switchBtn") return;
+$("switchBtn").addEventListener("click", () => {
   me = null; myName = "";
   try { localStorage.removeItem("tennis-me"); localStorage.removeItem("tennis-name"); } catch (e) {}
   render();
