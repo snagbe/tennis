@@ -219,15 +219,25 @@ details.past summary { cursor: pointer; font-weight: 600; }
   background: var(--bg); padding-block: 6px;
 }
 .tabbar .in {
-  display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px;
+  display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px;
   background: var(--surface); border: 2px solid var(--accent); border-radius: 14px; padding: 4px;
 }
 .tabbar button {
   min-height: 54px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
-  font: inherit; font-size: 13px; font-weight: 600; background: transparent; border: 0; border-radius: 9px; min-width: 0;
+  font: inherit; font-size: 12px; font-weight: 600; background: transparent; border: 0; border-radius: 9px; min-width: 0;
   color: var(--ink); cursor: pointer;
 }
 .tabbar button svg { width: 22px; height: 22px; }
+.costsum { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.costsum div { background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px; display: flex; flex-direction: column; line-height: 1.2; }
+.costsum span { font-size: 12px; color: var(--muted); }
+.costsum strong { font-family: var(--font-display); font-size: 1.35rem; }
+.crow { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 12px; align-items: baseline; padding: 10px 0; border-top: 1px solid var(--line); }
+.crow:first-child { border-top: 0; }
+.crow strong { font-family: var(--font-display); font-size: 1.3rem; overflow-wrap: anywhere; }
+.crow .amt { font-family: var(--font-display); font-size: 1.3rem; text-align: right; }
+.crow .sub { grid-column: 1 / -1; font-size: 13px; color: var(--muted); }
+.crow.me strong { color: var(--accent); }
 .tabbar button[aria-selected="true"] { background: var(--accent); color: var(--accent-ink); }
 
 @media (max-width: 540px) {
@@ -264,6 +274,10 @@ details.past summary { cursor: pointer; font-weight: 600; }
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>
         Verwalten
       </button>
+      <button type="button" role="tab" id="tab-kosten" data-tab="kosten" aria-selected="false" aria-controls="panel-kosten">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M14.8 9.2c-.5-.8-1.5-1.2-2.8-1.2-1.7 0-2.8.8-2.8 2s1 1.7 2.8 2 2.8.8 2.8 2-1.1 2-2.8 2c-1.3 0-2.4-.4-2.9-1.3M12 6.5V8m0 8v1.5"/></svg>
+        Kosten
+      </button>
     </div>
   </nav>
 
@@ -282,7 +296,9 @@ details.past summary { cursor: pointer; font-weight: 600; }
     <section class="tabpanel" id="panel-termine" role="tabpanel" aria-labelledby="tab-termine">
       <details class="how">
         <summary>So wird verteilt</summary>
-        <p>Trag dich für alle Freitage ein, an denen du kannst. Pro Termin spielen 6 Personen. Wer bisher weniger gespielt hat, kommt zuerst dran, damit alle ungefähr gleich oft spielen. Bei gleichem Stand entscheidet, wer sich zuerst eingetragen hat. Die Aufteilung passt sich laufend an, wenn sich jemand ein- oder austrägt. Vergangene Termine bleiben unverändert.</p>
+        <p>Trag dich für alle Freitage ein, an denen du kannst. Pro Termin spielen 6 Personen. Die Reihenfolge ist:</p>
+        <p>1. Wer bisher weniger gespielt hat, kommt zuerst.<br>2. Bei gleich vielen Spielen kommt zuerst, wer ab diesem Termin an weniger Freitagen kann.<br>3. Bei weiterem Gleichstand zählt, wer sich zuerst eingetragen hat.</p>
+        <p>Die Aufteilung passt sich laufend an, wenn sich jemand ein- oder austrägt. Nach einem Termin wird die Aufstellung festgehalten und bleibt unverändert.</p>
       </details>
       <div class="filters" role="group" aria-label="Termine filtern">
         <button type="button" data-filter="all" aria-pressed="true">Alle</button>
@@ -325,8 +341,17 @@ details.past summary { cursor: pointer; font-weight: 600; }
     <section class="tabpanel" id="panel-verwalten" role="tabpanel" aria-labelledby="tab-verwalten" hidden>
       <section class="panel" aria-labelledby="manageTitle">
         <h2 id="manageTitle">Personen verwalten</h2>
-        <p class="hint">Löschen entfernt eine Person mit allen ihren Antworten und lässt sich nicht rückgängig machen. Die Statistik der anderen kann sich dadurch ändern, weil bisherige Einsätze neu berechnet werden.</p>
+        <p class="hint">Löschen entfernt eine Person mit allen ihren Antworten und lässt sich nicht rückgängig machen. Bereits festgehaltene vergangene Termine bleiben unverändert, kommende Termine werden neu verteilt.</p>
         <div class="manage" id="manageList"></div>
+      </section>
+    </section>
+
+    <section class="tabpanel" id="panel-kosten" role="tabpanel" aria-labelledby="tab-kosten" hidden>
+      <section class="panel" aria-labelledby="costTitle">
+        <h2 id="costTitle">Wer zahlt was</h2>
+        <div class="costsum" id="costSum"></div>
+        <div id="costList"></div>
+        <p class="hint" id="costHint"></p>
       </section>
     </section>
   </main>
@@ -360,12 +385,18 @@ const $list = $("list"), $banner = $("banner"), $meLine = $("meLine"), $toast = 
 const $people = $("people"), $peopleHint = $("peopleHint"), $past = $("past"), $pastList = $("pastList"), $pastSummary = $("pastSummary");
 const $whoList = $("whoList");
 const $idBar = $("idBar"), $idName = $("idName"), $idAvatar = $("idAvatar");
-const TABS = ["termine", "statistik", "personen", "verwalten"];
+const TABS = ["termine", "statistik", "personen", "verwalten", "kosten"];
+const $costSum = $("costSum"), $costList = $("costList"), $costHint = $("costHint");
+// Kosten: Hallenmiete gesamt, Hallensaison bis zu diesem Datum, ab so wenigen Anwesenden zahlen alle.
+const COST_TOTAL = 3600, HALL_END = "2027-04-11", MIN_PRESENT = 4;
 const $manageList = $("manageList");
 let confirmDel = null;
 
 let db = null, configured = true;
 let docs = new Map();      // id -> { name, dates: { "YYYY-MM-DD": Zeitpunkt (Ich kann) | 0 (Kann nicht) } }
+let results = new Map();   // "YYYY-MM-DD" -> { going: [ids], names: { id: Name } } (festgehaltene Aufstellung vergangener Termine)
+let resultsLoaded = false, freezeWarned = false;
+const freezeTried = new Set();
 let me = null, myName = "";
 let loaded = false, filter = "all";
 const busy = {};
@@ -388,34 +419,78 @@ function el(tag, cls, text) {
 }
 function nameOf(id) { return (docs.get(id) && docs.get(id).name) || (id === me && myName) || "Jemand"; }
 function termine(n) { return n === 1 ? "1 kommenden Termin" : n + " kommende Termine"; }
-function nameList(entries) {
+function nameList(entries, fallback) {
   const p = el("span");
   entries.forEach((e, k) => {
-    p.appendChild(el(e.uid === me ? "strong" : "span", null, nameOf(e.uid)));
+    const label = (docs.get(e.uid) && docs.get(e.uid).name) || (fallback && fallback[e.uid]) || nameOf(e.uid);
+    p.appendChild(el(e.uid === me ? "strong" : "span", null, label));
     if (k < entries.length - 1) p.appendChild(document.createTextNode(", "));
   });
   return p;
 }
 
-// Faire Verteilung: Freitage der Reihe nach. Wer sich eingetragen hat, wird nach bisherigen Einsätzen
-// (wenigste zuerst), dann nach Eintragungszeit sortiert. Die ersten 6 spielen, der Rest ist Reserve.
+// Verteilung der 6 Plätze, Freitag für Freitag der Reihe nach. Wer "Ich kann" gewählt hat, wird sortiert nach:
+//   1. wer bisher weniger gespielt hat (festgehaltene Termine plus bisher berechnete)
+//   2. wer ab diesem Termin an weniger Freitagen kann (Anzahl "Ich kann" ab diesem Termin)
+//   3. wer sich zuerst eingetragen hat
+// Die ersten 6 spielen, der Rest ist Reserve. Vergangene Termine werden aus "results" gelesen,
+// sobald sie festgehalten sind. Dann ändern spätere Eintragungen sie nicht mehr.
 function compute() {
-  const counts = {}, out = {}, stats = {}, today = iso(new Date());
+  const counts = {}, out = {}, stats = {}, toFreeze = [], today = iso(new Date());
   docs.forEach((v, id) => { stats[id] = { played: 0, planned: 0, signed: 0 }; });
+  // Wert > 0: "Ich kann" (Zeitpunkt der Eintragung). Wert 0: "Kann nicht". Kein Eintrag: noch keine Antwort.
+  const isYes = (v, d) => v.dates && typeof v.dates[d] === "number" && v.dates[d] > 0;
+  const availFrom = {}, run = {};
+  for (let i = dates.length - 1; i >= 0; i--) {
+    docs.forEach((v, id) => { if (isYes(v, dates[i])) run[id] = (run[id] || 0) + 1; });
+    availFrom[dates[i]] = Object.assign({}, run);
+  }
   dates.forEach((d) => {
+    const frozen = d < today ? results.get(d) : null;
+    if (frozen) {
+      const going = frozen.going.map((uid) => ({ uid }));
+      going.forEach((e) => { counts[e.uid] = (counts[e.uid] || 0) + 1; if (stats[e.uid]) stats[e.uid].played++; });
+      out[d] = { going, reserve: [], names: frozen.names };
+      return;
+    }
     const av = [];
-    // Wert > 0: "Ich kann" (Zeitpunkt der Eintragung). Wert 0: "Kann nicht". Kein Eintrag: noch keine Antwort.
-    docs.forEach((v, id) => { if (v.dates && typeof v.dates[d] === "number" && v.dates[d] > 0) av.push({ uid: id, t: v.dates[d] }); });
-    av.sort((a, b) => (counts[a.uid] || 0) - (counts[b.uid] || 0) || a.t - b.t || (a.uid < b.uid ? -1 : 1));
+    docs.forEach((v, id) => { if (isYes(v, d)) av.push({ uid: id, t: v.dates[d] }); });
+    const a = availFrom[d];
+    av.sort((x, y) =>
+      (counts[x.uid] || 0) - (counts[y.uid] || 0) ||
+      (a[x.uid] || 0) - (a[y.uid] || 0) ||
+      x.t - y.t || (x.uid < y.uid ? -1 : 1));
     const going = av.slice(0, CAP), reserve = av.slice(CAP);
     going.forEach((e) => {
       counts[e.uid] = (counts[e.uid] || 0) + 1;
       if (d < today) stats[e.uid].played++; else stats[e.uid].planned++;
     });
     if (d >= today) av.forEach((e) => { stats[e.uid].signed++; });
-    out[d] = { going, reserve };
+    if (d < today) toFreeze.push(d);
+    out[d] = { going, reserve, names: {} };
   });
-  return { out, stats, today };
+  return { out, stats, today, toFreeze };
+}
+
+// Hält die Aufstellung vergangener Termine fest (einmal pro Termin, danach unveränderlich).
+function freezePast(c) {
+  if (!db || !loaded || !resultsLoaded) return;
+  c.toFreeze.forEach((d) => {
+    if (results.has(d) || freezeTried.has(d)) return;
+    freezeTried.add(d);
+    const r = c.out[d];
+    const names = {};
+    r.going.forEach((e) => { names[e.uid] = nameOf(e.uid); });
+    chain = chain.then(() => setDoc(doc(db, "results", d), { going: r.going.map((e) => e.uid), names }))
+      .catch(() => {
+        setTimeout(() => {
+          if (!results.has(d) && !freezeWarned) {
+            freezeWarned = true;
+            toast("Die Aufstellung eines vergangenen Termins konnte nicht festgehalten werden. Prüfe die Firestore-Regeln für «results».");
+          }
+        }, 2000);
+      });
+  });
 }
 
 function renderPeople(c) {
@@ -507,6 +582,49 @@ function renderManage() {
   });
 }
 
+function chf(x) { return "Fr. " + (Math.round(x * 100) / 100).toFixed(2); }
+function fmtDay(d) { return parse(d).toLocaleDateString("de-DE", { weekday: "short", day: "numeric", month: "numeric", year: "2-digit" }); }
+function presentOn(d, c) {
+  const r = c.out[d];
+  return r ? r.going.map((e) => e.uid) : [];
+}
+function renderCosts(c) {
+  $costSum.replaceChildren(); $costList.replaceChildren();
+  const sessions = dates.filter((d) => d <= HALL_END);
+  const everyone = Array.from(docs.keys());
+  if (!loaded || !everyone.length || !sessions.length) { $costHint.textContent = "Sobald Personen eingetragen sind, siehst du hier die Kosten."; return; }
+  const perSession = COST_TOTAL / sessions.length;
+  const paid = {}, planned = {}, cnt = {};
+  everyone.forEach((id) => { paid[id] = 0; planned[id] = 0; cnt[id] = 0; });
+  const allPayDays = [];
+  sessions.forEach((d) => {
+    const present = presentOn(d, c).filter((id) => docs.has(id));
+    const allPay = present.length < MIN_PRESENT;
+    const payers = allPay ? everyone : present;
+    if (allPay) allPayDays.push(d);
+    if (!payers.length) return;
+    const share = perSession / payers.length;
+    const isPast = d < c.today;
+    payers.forEach((id) => { if (isPast) paid[id] += share; else planned[id] += share; cnt[id]++; });
+  });
+  const box = (label, val) => { const b = el("div"); b.appendChild(el("span", null, label)); b.appendChild(el("strong", null, val)); return b; };
+  $costSum.appendChild(box("Gesamt", chf(COST_TOTAL)));
+  $costSum.appendChild(box("Pro Termin", chf(perSession)));
+  $costSum.appendChild(box("Termine", String(sessions.length)));
+  everyone.sort((a, b) => (paid[b] + planned[b]) - (paid[a] + planned[a]) || nameOf(a).localeCompare(nameOf(b), "de"));
+  everyone.forEach((id) => {
+    const row = el("div", "crow" + (id === me ? " me" : ""));
+    row.appendChild(el("strong", null, nameOf(id) + (id === me ? " (du)" : "")));
+    row.appendChild(el("span", "amt", chf(paid[id] + planned[id])));
+    row.appendChild(el("span", "sub", "Stand heute " + chf(paid[id]) + " · Prognose noch " + chf(planned[id]) + " · bei " + cnt[id] + " Terminen"));
+    $costList.appendChild(row);
+  });
+
+  $costHint.textContent = "Es zahlen die Personen, die sich mit «Ich kann» eingetragen haben und laut Aufstellung spielen (Reserve zahlt nicht). Sind weniger als " + MIN_PRESENT + " da, zahlen alle " + everyone.length +
+    ". Die Hallenmiete von " + chf(COST_TOTAL) + " (Saison bis 11.04.2027) wird gleichmässig auf " + sessions.length +
+    " Freitage verteilt. Abgerechnet wird am Schluss. «Stand heute» zählt vergangene Termine, die Prognose die kommenden.";
+}
+
 function removePerson(id) {
   if (!db) return;
   confirmDel = null;
@@ -537,6 +655,7 @@ function render() {
   renderPeople(c);
   renderWho();
   renderManage();
+  renderCosts(c);
   showTab();
 
   if (me) {
@@ -650,7 +769,7 @@ function render() {
     const pr = el("div", "pastrow");
     pr.appendChild(el("div", "pd", parse(d).toLocaleDateString("de-DE", { weekday: "short", day: "2-digit", month: "2-digit" })));
     const pn = el("div", "pn");
-    pn.appendChild(nameList(c.out[d].going));
+    pn.appendChild(nameList(c.out[d].going, c.out[d].names));
     pr.appendChild(pn);
     $pastList.appendChild(pr);
   });
@@ -665,6 +784,8 @@ function render() {
     $banner.textContent = "Wähle im Reiter «Personen» deinen Namen, dann kannst du dich eintragen.";
     $banner.hidden = false;
   } else { $banner.hidden = true; }
+
+  freezePast(c);
 }
 
 function save(id, data) {
@@ -764,6 +885,23 @@ if (configured) {
     }, () => {
       loaded = true;
       toast("Die Eintragungen konnten nicht geladen werden. Prüfe die Firestore-Regeln (Schritt 4).");
+      render();
+    });
+    onSnapshot(collection(db, "results"), (snap) => {
+      const next = new Map();
+      snap.forEach((d) => {
+        const v = d.data();
+        if (v && Array.isArray(v.going)) {
+          next.set(d.id, {
+            going: v.going.filter((x) => typeof x === "string"),
+            names: (v.names && typeof v.names === "object") ? v.names : {}
+          });
+        }
+      });
+      results = next; resultsLoaded = true;
+      render();
+    }, () => {
+      resultsLoaded = true;
       render();
     });
   } catch (e) {
