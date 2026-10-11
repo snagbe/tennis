@@ -18,6 +18,7 @@
   --accent: #1b6b4f;
   --accent-ink: #ffffff;
   --ball: #c9dc2b;
+  --ball-ink: #1d2a05;
   --reserve: #b4462f;
   --reserve-bg: #f6e3de;
   --font-display: "Barlow Condensed", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
@@ -34,6 +35,7 @@
     --accent: #4fc08f;
     --accent-ink: #0b1a13;
     --ball: #d6e84a;
+    --ball-ink: #1d2a05;
     --reserve: #e58a74;
     --reserve-bg: #3a211b;
   }
@@ -48,26 +50,54 @@ body {
   font-size: 16px;
   line-height: 1.45;
   padding-inline: 16px;
-  padding-block: calc(28px + env(safe-area-inset-top, 0px)) calc(56px + env(safe-area-inset-bottom, 0px));
+  padding-block: calc(20px + env(safe-area-inset-top, 0px)) calc(100px + env(safe-area-inset-bottom, 0px));
 }
-.wrap { max-width: 760px; margin-inline: auto; display: flex; flex-direction: column; gap: 20px; }
-header { display: flex; flex-direction: column; gap: 6px; }
+.wrap { max-width: 760px; margin-inline: auto; display: flex; flex-direction: column; gap: 16px; }
+header { display: flex; flex-direction: column; gap: 4px; }
 .eyebrow { font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
-h1 { font-family: var(--font-display); font-weight: 700; font-size: clamp(2.4rem, 9vw, 3.6rem); line-height: 0.95; margin: 0; text-wrap: balance; }
-.sub { color: var(--muted); margin: 0; max-width: 62ch; }
-.me-line { margin: 0; font-weight: 500; }
+h1 { font-family: var(--font-display); font-weight: 700; font-size: clamp(2.2rem, 8vw, 3.2rem); line-height: 0.95; margin: 0; text-wrap: balance; }
+h2 { font-family: var(--font-display); font-weight: 600; font-size: 1.5rem; letter-spacing: 0.04em; text-transform: uppercase; margin: 0; }
+button:focus-visible, summary:focus-visible, input:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.tabpanel { display: flex; flex-direction: column; gap: 16px; }
+.tabpanel[hidden] { display: none; }
 .banner { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; font-size: 14px; color: var(--muted); }
 .banner[hidden] { display: none; }
-h2 { font-family: var(--font-display); font-weight: 600; font-size: 1.5rem; letter-spacing: 0.04em; text-transform: uppercase; margin: 0; }
+
+/* Aktuelle Person */
+.idbar {
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; align-items: center;
+  background: var(--surface); border: 2px solid var(--accent); border-radius: 12px; padding: 10px 12px;
+}
+.idbar[hidden] { display: none; }
+.avatar {
+  width: 44px; height: 44px; border-radius: 50%; background: var(--ball); color: var(--ball-ink);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-display); font-weight: 700; font-size: 1.6rem; line-height: 1;
+}
+.idtext { min-width: 0; display: flex; flex-direction: column; line-height: 1.2; }
+.idlabel { font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+.idtext strong { font-family: var(--font-display); font-size: 1.6rem; font-weight: 700; overflow-wrap: anywhere; }
+.switch {
+  font: inherit; font-weight: 600; font-size: 15px; min-height: 44px; padding: 10px 18px; border-radius: 8px; cursor: pointer;
+  border: 1.5px solid var(--accent); background: transparent; color: var(--accent);
+}
+
+/* Panels */
 .panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px; display: flex; flex-direction: column; gap: 12px; }
-.panel[hidden] { display: none; }
-.panel .hint { margin: 0; font-size: 14px; color: var(--muted); }
+.panel .hint, .hint { margin: 0; font-size: 14px; color: var(--muted); }
+.me-line { margin: 0; font-weight: 500; }
+.me-line[hidden] { display: none; }
+details.how { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; }
+details.how summary { cursor: pointer; font-weight: 600; }
+details.how p { margin: 8px 0 0; color: var(--muted); font-size: 14px; max-width: 62ch; }
+
+/* Statistik */
 .legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 13px; color: var(--muted); }
 .legend span { display: inline-flex; align-items: center; gap: 6px; }
 .sw { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
 .sw.played { background: var(--ink); }
 .sw.planned { background: var(--accent); }
-.people { display: flex; flex-direction: column; gap: 10px; }
+.people { display: flex; flex-direction: column; gap: 12px; }
 .person { display: grid; grid-template-columns: 7rem minmax(0, 1fr); gap: 4px 12px; align-items: center; }
 .person .pname { font-weight: 600; overflow-wrap: anywhere; }
 .person .pname.me { color: var(--accent); }
@@ -76,23 +106,10 @@ h2 { font-family: var(--font-display); font-weight: 600; font-size: 1.5rem; lett
 .bar .planned { background: var(--accent); }
 .pnums { grid-column: 2; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .pnums b { color: var(--ink); font-weight: 600; }
-.who { display: flex; flex-wrap: wrap; gap: 8px; }
-.who button, .filters button, .linkbtn {
-  font: inherit; font-size: 14px; font-weight: 600; color: var(--ink); background: transparent;
-  border: 1px solid var(--line); border-radius: 999px; padding: 8px 16px; cursor: pointer;
-}
-.idbar {
-  display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 8px 14px; align-items: center;
-  background: var(--surface); border: 2px solid var(--accent); border-radius: 12px; padding: 12px 14px;
-}
-.idbar[hidden] { display: none; }
-.avatar {
-  width: 44px; height: 44px; border-radius: 50%; background: var(--ball); color: #1d2a05;
-  display: flex; align-items: center; justify-content: center;
-  font-family: var(--font-display); font-weight: 700; font-size: 1.6rem; line-height: 1;
-}
-#whoPanel { border: 2px solid var(--accent); }
-.who { gap: 10px; }
+.you { margin-left: 8px; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; background: var(--ball); color: var(--ball-ink); vertical-align: middle; }
+
+/* Personen */
+.who { display: flex; flex-wrap: wrap; gap: 10px; }
 .who button.pick {
   display: inline-flex; align-items: center; gap: 8px; min-height: 48px; max-width: 100%; padding: 5px 16px 5px 6px;
   border: 2px solid var(--accent); border-radius: 26px; background: var(--bg); color: var(--ink); cursor: pointer;
@@ -100,29 +117,27 @@ h2 { font-family: var(--font-display); font-weight: 600; font-size: 1.5rem; lett
 }
 .who button.pick > span:last-child { min-width: 0; overflow-wrap: anywhere; text-align: left; line-height: 1.05; }
 .who button.pick .av {
-  flex: none; width: 34px; height: 34px; border-radius: 50%; background: var(--ball); color: #1d2a05;
+  flex: none; width: 34px; height: 34px; border-radius: 50%; background: var(--ball); color: var(--ball-ink);
   display: flex; align-items: center; justify-content: center; font-size: 1.25rem;
 }
-.who button.pick:hover, .who button.pick:active { background: var(--accent); color: var(--accent-ink); }
-.idtext { min-width: 0; display: flex; flex-direction: column; line-height: 1.2; }
-.idlabel { font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
-.idtext strong { font-family: var(--font-display); font-size: 1.6rem; font-weight: 700; overflow-wrap: anywhere; }
-.switch {
-  font: inherit; font-weight: 600; font-size: 15px; min-height: 44px; padding: 10px 18px; border-radius: 8px; cursor: pointer;
-  border: 1.5px solid var(--accent); background: transparent; color: var(--accent);
-}
-.you { margin-left: 8px; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; background: var(--ball); color: #1d2a05; vertical-align: middle; }
+.who button.pick.current { background: var(--accent); color: var(--accent-ink); }
+.who button.pick:active { background: var(--accent); color: var(--accent-ink); }
+@media (hover: hover) { .who button.pick:hover { background: var(--accent); color: var(--accent-ink); } }
 .newname { display: flex; gap: 8px; flex-wrap: wrap; }
 .newname input {
   flex: 1 1 12rem; min-width: 0; font: inherit; font-size: 16px; padding: 10px 12px; border-radius: 8px;
   border: 1px solid var(--line); background: var(--bg); color: var(--ink);
 }
-.newname button { font: inherit; font-weight: 600; padding: 10px 18px; border-radius: 8px; border: 1.5px solid var(--accent); background: var(--accent); color: var(--accent-ink); cursor: pointer; }
+.newname button { font: inherit; font-weight: 600; padding: 10px 18px; border-radius: 8px; border: 1.5px solid var(--accent); background: var(--accent); color: var(--accent-ink); cursor: pointer; min-height: 44px; }
+
+/* Termine */
 .filters { display: flex; gap: 8px; flex-wrap: wrap; }
-.filters button { padding: 6px 14px; }
+.filters button {
+  font: inherit; font-size: 14px; font-weight: 600; color: var(--ink); background: transparent;
+  border: 1px solid var(--line); border-radius: 999px; padding: 8px 16px; cursor: pointer;
+}
 .filters button[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
-button:focus-visible, summary:focus-visible, input:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
-h3.month { font-family: var(--font-display); font-weight: 600; font-size: 1.3rem; letter-spacing: 0.04em; text-transform: uppercase; margin: 14px 0 0; color: var(--muted); }
+h3.month { font-family: var(--font-display); font-weight: 600; font-size: 1.3rem; letter-spacing: 0.04em; text-transform: uppercase; margin: 10px 0 0; color: var(--muted); }
 .list { display: flex; flex-direction: column; gap: 8px; }
 .row {
   background: var(--surface); border: 1px solid var(--line); border-radius: 10px;
@@ -164,12 +179,31 @@ details.past summary { cursor: pointer; font-weight: 600; }
 .pastrow { display: grid; grid-template-columns: 5.5rem minmax(0, 1fr); gap: 10px; font-size: 14px; }
 .pastrow .pd { color: var(--muted); font-variant-numeric: tabular-nums; }
 .pastrow .pn { overflow-wrap: anywhere; }
-.toast { position: sticky; bottom: calc(12px + env(safe-area-inset-bottom, 0px)); background: var(--ink); color: var(--bg); padding: 10px 14px; border-radius: 8px; font-size: 14px; }
+
+/* Meldung */
+.toast {
+  position: fixed; left: 16px; right: 16px; margin-inline: auto; max-width: 728px; z-index: 20;
+  bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+  background: var(--ink); color: var(--bg); padding: 10px 14px; border-radius: 8px; font-size: 14px;
+}
 .toast[hidden] { display: none; }
-.foot { font-size: 13px; color: var(--muted); margin: 0; }
+
+/* Reiter unten */
+.tabbar {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 10;
+  background: var(--surface); border-top: 1px solid var(--line);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.tabbar .in { max-width: 760px; margin-inline: auto; display: grid; grid-template-columns: repeat(3, 1fr); }
+.tabbar button {
+  min-height: 62px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+  font: inherit; font-size: 13px; font-weight: 600; background: transparent; border: 0; border-top: 3px solid transparent;
+  color: var(--muted); cursor: pointer;
+}
+.tabbar button svg { width: 24px; height: 24px; }
+.tabbar button[aria-selected="true"] { color: var(--accent); border-top-color: var(--accent); }
+
 @media (max-width: 540px) {
-  .idbar { grid-template-columns: auto minmax(0, 1fr); }
-  .switch { grid-column: 1 / -1; width: 100%; }
   .row { grid-template-columns: 3.4rem minmax(0, 1fr); }
   .act { grid-column: 1 / -1; }
   .act button { flex: 1; }
@@ -183,7 +217,6 @@ details.past summary { cursor: pointer; font-weight: 600; }
   <header>
     <div class="eyebrow">Tennis · jeden Freitag · 16.10.2026 bis 30.04.2027</div>
     <h1>Freitagstraining</h1>
-    <p class="sub">Trag dich für alle Freitage ein, an denen du kannst. Pro Termin spielen 6 Personen. Wer bisher weniger gespielt hat, kommt zuerst dran, damit alle ungefähr gleich oft spielen. Die Aufteilung passt sich laufend an, wenn sich jemand ein- oder austrägt.</p>
   </header>
 
   <section class="idbar" id="idBar" hidden aria-label="Aktuelle Person">
@@ -192,49 +225,75 @@ details.past summary { cursor: pointer; font-weight: 600; }
       <span class="idlabel">Du trägst dich ein als</span>
       <strong id="idName"></strong>
     </div>
-    <button type="button" id="switchBtn" class="switch">Person wechseln</button>
+    <button type="button" id="switchBtn" class="switch">Wechseln</button>
   </section>
-  <p class="me-line" id="meLine" hidden></p>
 
   <div class="banner" id="banner">Eintragungen werden geladen …</div>
 
-  <section class="panel" id="whoPanel" hidden aria-labelledby="whoTitle">
-    <h2 id="whoTitle">Wer bist du?</h2>
-    <p class="hint">Tippe auf deinen Namen. Bist du neu, gib ihn unten ein.</p>
-    <div class="who" id="whoList"></div>
-    <form class="newname" id="newForm">
-      <input id="newName" type="text" maxlength="30" autocomplete="off" placeholder="Neuer Name, z. B. Sandra">
-      <button type="submit">Weiter</button>
-    </form>
-    <p class="hint">Dein Name wird auf diesem Gerät gespeichert. Du kannst ihn oben jederzeit wechseln.</p>
-  </section>
+  <main>
+    <section class="tabpanel" id="panel-termine" role="tabpanel" aria-labelledby="tab-termine">
+      <details class="how">
+        <summary>So wird verteilt</summary>
+        <p>Trag dich für alle Freitage ein, an denen du kannst. Pro Termin spielen 6 Personen. Wer bisher weniger gespielt hat, kommt zuerst dran, damit alle ungefähr gleich oft spielen. Bei gleichem Stand entscheidet, wer sich zuerst eingetragen hat. Die Aufteilung passt sich laufend an, wenn sich jemand ein- oder austrägt. Vergangene Termine bleiben unverändert.</p>
+      </details>
+      <div class="filters" role="group" aria-label="Termine filtern">
+        <button type="button" data-filter="all" aria-pressed="true">Alle</button>
+        <button type="button" data-filter="free" aria-pressed="false">Weniger als 6</button>
+        <button type="button" data-filter="mine" aria-pressed="false">Meine</button>
+      </div>
+      <div class="list" id="list"></div>
+      <details class="past" id="past" hidden>
+        <summary id="pastSummary">Vergangene Termine</summary>
+        <div class="pastlist" id="pastList"></div>
+      </details>
+    </section>
 
-  <section class="panel" aria-labelledby="fairTitle">
-    <h2 id="fairTitle">Wer spielt wie oft</h2>
-    <div class="legend">
-      <span><i class="sw played"></i>Bisher gespielt</span>
-      <span><i class="sw planned"></i>Voraussichtlich noch</span>
-    </div>
-    <div class="people" id="people"></div>
-    <p class="hint" id="peopleHint"></p>
-  </section>
+    <section class="tabpanel" id="panel-statistik" role="tabpanel" aria-labelledby="tab-statistik" hidden>
+      <p class="me-line" id="meLine" hidden></p>
+      <section class="panel" aria-labelledby="fairTitle">
+        <h2 id="fairTitle">Wer spielt wie oft</h2>
+        <div class="legend">
+          <span><i class="sw played"></i>Bisher gespielt</span>
+          <span><i class="sw planned"></i>Voraussichtlich noch</span>
+        </div>
+        <div class="people" id="people"></div>
+        <p class="hint" id="peopleHint"></p>
+      </section>
+    </section>
 
-  <div class="filters" role="group" aria-label="Termine filtern">
-    <button type="button" data-filter="all" aria-pressed="true">Alle</button>
-    <button type="button" data-filter="free" aria-pressed="false">Weniger als 6</button>
-    <button type="button" data-filter="mine" aria-pressed="false">Meine</button>
-  </div>
-
-  <div class="list" id="list"></div>
-
-  <details class="past" id="past" hidden>
-    <summary id="pastSummary">Vergangene Termine</summary>
-    <div class="pastlist" id="pastList"></div>
-  </details>
+    <section class="tabpanel" id="panel-personen" role="tabpanel" aria-labelledby="tab-personen" hidden>
+      <section class="panel" aria-labelledby="whoTitle">
+        <h2 id="whoTitle">Wer bist du?</h2>
+        <p class="hint">Tippe auf deinen Namen. Bist du neu, gib ihn unten ein.</p>
+        <div class="who" id="whoList"></div>
+        <form class="newname" id="newForm">
+          <input id="newName" type="text" maxlength="30" autocomplete="off" placeholder="Neu hier? Dein Name">
+          <button type="submit">Weiter</button>
+        </form>
+        <p class="hint">Dein Name wird auf diesem Gerät gespeichert. Hier kannst du ihn jederzeit wechseln.</p>
+      </section>
+    </section>
+  </main>
 
   <div class="toast" id="toast" role="status" hidden></div>
-  <p class="foot">Bei gleichem Stand entscheidet, wer sich zuerst eingetragen hat. Vergangene Termine bleiben unverändert.</p>
 </div>
+
+<nav class="tabbar" aria-label="Bereiche">
+  <div class="in" role="tablist">
+    <button type="button" role="tab" id="tab-termine" data-tab="termine" aria-selected="true" aria-controls="panel-termine">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
+      Termine
+    </button>
+    <button type="button" role="tab" id="tab-statistik" data-tab="statistik" aria-selected="false" aria-controls="panel-statistik">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 20V10M12 20V4M19 20v-7"/></svg>
+      Statistik
+    </button>
+    <button type="button" role="tab" id="tab-personen" data-tab="personen" aria-selected="false" aria-controls="panel-personen">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6"/><circle cx="17.5" cy="9" r="2.5"/><path d="M17.5 14c2.5 0 4 1.7 4 4.5"/></svg>
+      Personen
+    </button>
+  </div>
+</nav>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
@@ -260,11 +319,12 @@ function slug(n) { return n.trim().toLowerCase().replace(/[^a-z0-9äöüéèà]+
 const $ = (id) => document.getElementById(id);
 const $list = $("list"), $banner = $("banner"), $meLine = $("meLine"), $toast = $("toast");
 const $people = $("people"), $peopleHint = $("peopleHint"), $past = $("past"), $pastList = $("pastList"), $pastSummary = $("pastSummary");
-const $whoPanel = $("whoPanel"), $whoList = $("whoList");
+const $whoList = $("whoList");
 const $idBar = $("idBar"), $idName = $("idName"), $idAvatar = $("idAvatar");
+const TABS = ["termine", "statistik", "personen"];
 
 let db = null, configured = true;
-let docs = new Map();      // id -> { name, dates: { "YYYY-MM-DD": timestamp } }
+let docs = new Map();      // id -> { name, dates: { "YYYY-MM-DD": Zeitpunkt (Ich kann) | 0 (Kann nicht) } }
 let me = null, myName = "";
 let loaded = false, filter = "all";
 const busy = {};
@@ -272,6 +332,7 @@ let chain = Promise.resolve();
 let toastTimer = null;
 
 try { me = localStorage.getItem("tennis-me"); myName = localStorage.getItem("tennis-name") || ""; } catch (e) {}
+let tab = me ? "termine" : "personen";
 
 function toast(msg) {
   $toast.textContent = msg; $toast.hidden = false;
@@ -285,7 +346,6 @@ function el(tag, cls, text) {
   return e;
 }
 function nameOf(id) { return (docs.get(id) && docs.get(id).name) || (id === me && myName) || "Jemand"; }
-function labelOf(id) { return nameOf(id); }
 function termine(n) { return n === 1 ? "1 kommenden Termin" : n + " kommende Termine"; }
 function nameList(entries) {
   const p = el("span");
@@ -323,7 +383,7 @@ function renderPeople(c) {
   if (!ids.length) { $peopleHint.textContent = "Sobald sich jemand einträgt, siehst du hier, wer wie oft spielt."; return; }
   ids.sort((a, b) => {
     const sa = c.stats[a], sb = c.stats[b];
-    return (sb.played + sb.planned) - (sa.played + sa.planned) || sb.played - sa.played || labelOf(a).localeCompare(labelOf(b), "de");
+    return (sb.played + sb.planned) - (sa.played + sa.planned) || sb.played - sa.played || nameOf(a).localeCompare(nameOf(b), "de");
   });
   let max = 1;
   ids.forEach((id) => { max = Math.max(max, c.stats[id].played + c.stats[id].planned); });
@@ -351,22 +411,29 @@ function renderPeople(c) {
 }
 
 function renderWho() {
-  const show = configured && loaded && !me;
-  $whoPanel.hidden = !show;
-  if (!show) return;
   $whoList.replaceChildren();
-  Array.from(docs.entries())
-    .sort((a, b) => (a[1].name || "").localeCompare(b[1].name || "", "de"))
-    .forEach(([id, v]) => {
-      const label = v.name || id;
-      const b = el("button", "pick");
-      b.type = "button";
-      b.dataset.id = id;
-      b.dataset.name = label;
-      b.appendChild(el("span", "av", label.charAt(0).toUpperCase()));
-      b.appendChild(el("span", null, label));
-      $whoList.appendChild(b);
-    });
+  if (!configured) return;
+  if (!loaded) { $whoList.appendChild(el("p", "hint", "Namen werden geladen …")); return; }
+  const all = Array.from(docs.entries()).sort((a, b) => (a[1].name || "").localeCompare(b[1].name || "", "de"));
+  if (!all.length) { $whoList.appendChild(el("p", "hint", "Noch niemand eingetragen. Gib unten deinen Namen ein.")); return; }
+  all.forEach(([id, v]) => {
+    const label = v.name || id;
+    const b = el("button", "pick" + (id === me ? " current" : ""));
+    b.type = "button";
+    b.dataset.id = id;
+    b.dataset.name = label;
+    if (id === me) b.setAttribute("aria-pressed", "true");
+    b.appendChild(el("span", "av", label.charAt(0).toUpperCase()));
+    b.appendChild(el("span", null, label));
+    $whoList.appendChild(b);
+  });
+}
+
+function showTab() {
+  TABS.forEach((t) => {
+    $("panel-" + t).hidden = t !== tab;
+    $("tab-" + t).setAttribute("aria-selected", t === tab ? "true" : "false");
+  });
 }
 
 function render() {
@@ -378,6 +445,7 @@ function render() {
   $list.replaceChildren();
   renderPeople(c);
   renderWho();
+  showTab();
 
   if (me) {
     const shownName = nameOf(me);
@@ -400,6 +468,7 @@ function render() {
     const myVal = (docs.get(me) && docs.get(me).dates) ? docs.get(me).dates[d] : undefined;
     const mineState = isGoing ? "going" : (resIdx >= 0 ? "res" : (myVal === 0 ? "no" : "none"));
     if (filter === "mine" && (mineState === "none" || mineState === "no")) return;
+    if (filter === "free" && r.going.length >= CAP) return;
     const noList = [], openList = [];
     docs.forEach((v, id) => {
       const t = v.dates ? v.dates[d] : undefined;
@@ -408,7 +477,6 @@ function render() {
     });
     const byName = (a, b) => nameOf(a.uid).localeCompare(nameOf(b.uid), "de");
     noList.sort(byName); openList.sort(byName);
-    if (filter === "free" && r.going.length >= CAP) return;
 
     const dt = parse(d);
     const monthKey = dt.toLocaleDateString("de-DE", { month: "long", year: "numeric" });
@@ -501,8 +569,8 @@ function render() {
   } else if (!loaded) {
     $banner.textContent = "Eintragungen werden geladen …";
     $banner.hidden = false;
-  } else if (!me) {
-    $banner.textContent = "Wähle unten deinen Namen, dann kannst du dich eintragen.";
+  } else if (!me && tab !== "personen") {
+    $banner.textContent = "Wähle im Reiter «Personen» deinen Namen, dann kannst du dich eintragen.";
     $banner.hidden = false;
   } else { $banner.hidden = true; }
 }
@@ -537,7 +605,9 @@ function choose(id, name) {
     docs.set(id, data);
     save(id, data);
   }
+  tab = "termine";
   render();
+  window.scrollTo(0, 0);
 }
 
 $list.addEventListener("click", (ev) => {
@@ -550,6 +620,13 @@ document.querySelector(".filters").addEventListener("click", (ev) => {
   filter = b.dataset.filter;
   document.querySelectorAll(".filters button").forEach((x) => x.setAttribute("aria-pressed", x === b ? "true" : "false"));
   render();
+});
+document.querySelector(".tabbar").addEventListener("click", (ev) => {
+  const b = ev.target.closest("button[data-tab]");
+  if (!b) return;
+  tab = b.dataset.tab;
+  render();
+  window.scrollTo(0, 0);
 });
 $whoList.addEventListener("click", (ev) => {
   const b = ev.target.closest("button[data-id]");
@@ -565,9 +642,9 @@ $("newForm").addEventListener("submit", (ev) => {
   choose(id, docs.has(id) ? docs.get(id).name : name);
 });
 $("switchBtn").addEventListener("click", () => {
-  me = null; myName = "";
-  try { localStorage.removeItem("tennis-me"); localStorage.removeItem("tennis-name"); } catch (e) {}
+  tab = "personen";
   render();
+  window.scrollTo(0, 0);
 });
 
 configured = !!firebaseConfig.apiKey && !firebaseConfig.apiKey.startsWith("DEIN");
