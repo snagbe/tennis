@@ -91,6 +91,18 @@ h2 { font-family: var(--font-display); font-weight: 600; font-size: 1.5rem; lett
   display: flex; align-items: center; justify-content: center;
   font-family: var(--font-display); font-weight: 700; font-size: 1.6rem; line-height: 1;
 }
+#whoPanel { border: 2px solid var(--accent); }
+.who { gap: 10px; }
+.who button.pick {
+  display: inline-flex; align-items: center; gap: 10px; min-height: 52px; padding: 6px 20px 6px 7px;
+  border: 2px solid var(--accent); border-radius: 999px; background: var(--bg); color: var(--ink); cursor: pointer;
+  font-family: var(--font-display); font-weight: 700; font-size: 1.5rem; line-height: 1;
+}
+.who button.pick .av {
+  width: 38px; height: 38px; border-radius: 50%; background: var(--ball); color: #1d2a05;
+  display: flex; align-items: center; justify-content: center; font-size: 1.4rem;
+}
+.who button.pick:hover, .who button.pick:active { background: var(--accent); color: var(--accent-ink); }
 .idtext { min-width: 0; display: flex; flex-direction: column; line-height: 1.2; }
 .idlabel { font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
 .idtext strong { font-family: var(--font-display); font-size: 1.6rem; font-weight: 700; overflow-wrap: anywhere; }
@@ -134,12 +146,14 @@ h3.month { font-family: var(--font-display); font-weight: 600; font-size: 1.3rem
 .names strong { color: var(--ink); font-weight: 600; }
 .status { font-size: 14px; font-weight: 600; margin: 0; }
 .status.res { color: var(--reserve); }
+.act { display: flex; gap: 8px; }
 .act button {
-  font: inherit; font-weight: 600; font-size: 15px; border-radius: 8px; padding: 10px 16px; cursor: pointer;
-  min-width: 9.5rem; border: 1.5px solid var(--accent); background: var(--accent); color: var(--accent-ink);
+  font: inherit; font-weight: 600; font-size: 15px; border-radius: 8px; padding: 10px 14px; cursor: pointer;
+  min-height: 44px; border: 1.5px solid var(--line); background: transparent; color: var(--ink);
 }
-.act button.ghost { background: transparent; color: var(--ink); border-color: var(--line); }
-.act button.ghost:hover { border-color: var(--reserve); color: var(--reserve); }
+.act button.yes { border-color: var(--accent); color: var(--accent); }
+.act button.yes.on { background: var(--accent); color: var(--accent-ink); }
+.act button.no.on { background: var(--reserve-bg); color: var(--reserve); border-color: var(--reserve); }
 .act button:disabled { opacity: 0.5; cursor: default; }
 .empty { color: var(--muted); padding: 24px 0; text-align: center; margin: 0; }
 details.past { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
@@ -157,7 +171,7 @@ details.past summary { cursor: pointer; font-weight: 600; }
   .switch { grid-column: 1 / -1; width: 100%; }
   .row { grid-template-columns: 3.4rem minmax(0, 1fr); }
   .act { grid-column: 1 / -1; }
-  .act button { width: 100%; }
+  .act button { flex: 1; }
   .person { grid-template-columns: minmax(0, 1fr); }
   .pnums { grid-column: 1; }
 }
@@ -185,6 +199,7 @@ details.past summary { cursor: pointer; font-weight: 600; }
 
   <section class="panel" id="whoPanel" hidden aria-labelledby="whoTitle">
     <h2 id="whoTitle">Wer bist du?</h2>
+    <p class="hint">Tippe auf deinen Namen. Bist du neu, gib ihn unten ein.</p>
     <div class="who" id="whoList"></div>
     <form class="newname" id="newForm">
       <input id="newName" type="text" maxlength="30" autocomplete="off" placeholder="Neuer Name, z. B. Sandra">
@@ -287,7 +302,8 @@ function compute() {
   docs.forEach((v, id) => { stats[id] = { played: 0, planned: 0, signed: 0 }; });
   dates.forEach((d) => {
     const av = [];
-    docs.forEach((v, id) => { if (v.dates && typeof v.dates[d] === "number") av.push({ uid: id, t: v.dates[d] }); });
+    // Wert > 0: "Ich kann" (Zeitpunkt der Eintragung). Wert 0: "Kann nicht". Kein Eintrag: noch keine Antwort.
+    docs.forEach((v, id) => { if (v.dates && typeof v.dates[d] === "number" && v.dates[d] > 0) av.push({ uid: id, t: v.dates[d] }); });
     av.sort((a, b) => (counts[a.uid] || 0) - (counts[b.uid] || 0) || a.t - b.t || (a.uid < b.uid ? -1 : 1));
     const going = av.slice(0, CAP), reserve = av.slice(CAP);
     going.forEach((e) => {
@@ -341,9 +357,13 @@ function renderWho() {
   Array.from(docs.entries())
     .sort((a, b) => (a[1].name || "").localeCompare(b[1].name || "", "de"))
     .forEach(([id, v]) => {
-      const b = el("button", null, v.name || id);
+      const label = v.name || id;
+      const b = el("button", "pick");
       b.type = "button";
       b.dataset.id = id;
+      b.dataset.name = label;
+      b.appendChild(el("span", "av", label.charAt(0).toUpperCase()));
+      b.appendChild(el("span", null, label));
       $whoList.appendChild(b);
     });
 }
@@ -376,8 +396,17 @@ function render() {
     const r = c.out[d];
     const isGoing = r.going.some((e) => e.uid === me);
     const resIdx = r.reserve.findIndex((e) => e.uid === me);
-    const mineState = isGoing ? "going" : (resIdx >= 0 ? "res" : "none");
-    if (filter === "mine" && mineState === "none") return;
+    const myVal = (docs.get(me) && docs.get(me).dates) ? docs.get(me).dates[d] : undefined;
+    const mineState = isGoing ? "going" : (resIdx >= 0 ? "res" : (myVal === 0 ? "no" : "none"));
+    if (filter === "mine" && (mineState === "none" || mineState === "no")) return;
+    const noList = [], openList = [];
+    docs.forEach((v, id) => {
+      const t = v.dates ? v.dates[d] : undefined;
+      if (t === 0) noList.push({ uid: id });
+      else if (!(t > 0)) openList.push({ uid: id });
+    });
+    const byName = (a, b) => nameOf(a.uid).localeCompare(nameOf(b.uid), "de");
+    noList.sort(byName); openList.sort(byName);
     if (filter === "free" && r.going.length >= CAP) return;
 
     const dt = parse(d);
@@ -414,18 +443,34 @@ function render() {
       n2.appendChild(nameList(r.reserve));
       mid.appendChild(n2);
     }
+    if (noList.length) {
+      const n3 = el("p", "names");
+      n3.appendChild(document.createTextNode("Kann nicht: "));
+      n3.appendChild(nameList(noList));
+      mid.appendChild(n3);
+    }
+    if (openList.length) {
+      const n4 = el("p", "names");
+      n4.appendChild(document.createTextNode("Noch keine Antwort: "));
+      n4.appendChild(nameList(openList));
+      mid.appendChild(n4);
+    }
     if (mineState === "going") mid.appendChild(el("p", "status", "Du spielst voraussichtlich."));
     if (mineState === "res") mid.appendChild(el("p", "status res", "Du bist Reserve (Platz " + (resIdx + 1) + ") und rückst nach, wenn jemand absagt."));
+    if (mineState === "no") mid.appendChild(el("p", "status", "Du hast für diesen Termin abgesagt."));
     row.appendChild(mid);
 
     const act = el("div", "act");
-    const btn = el("button");
-    btn.type = "button";
-    btn.dataset.date = d;
-    if (mineState === "none") btn.textContent = "Ich kann";
-    else { btn.textContent = "Ich kann nicht mehr"; btn.className = "ghost"; }
-    btn.disabled = !canWrite || !!busy[d];
-    act.appendChild(btn);
+    const yesOn = mineState === "going" || mineState === "res";
+    const yes = el("button", "choice yes" + (yesOn ? " on" : ""), (yesOn ? "✓ " : "") + "Ich kann");
+    const no = el("button", "choice no" + (mineState === "no" ? " on" : ""), (mineState === "no" ? "✓ " : "") + "Kann nicht");
+    [[yes, "yes"], [no, "no"]].forEach(([b, which]) => {
+      b.type = "button";
+      b.dataset.date = d;
+      b.dataset.set = which;
+      b.disabled = !canWrite || !!busy[d];
+      act.appendChild(b);
+    });
     row.appendChild(act);
     $list.appendChild(row);
   });
@@ -450,7 +495,7 @@ function render() {
   });
 
   if (!configured) {
-    $banner.textContent = "Die Firebase-Werte fehlen noch in der Datei index.html. Siehe Schritt 3 der Anleitung.";
+    $banner.textContent = "Die Firebase-Werte fehlen noch in der Datei config.js (apiKey und appId).";
     $banner.hidden = false;
   } else if (!loaded) {
     $banner.textContent = "Eintragungen werden geladen …";
@@ -468,11 +513,14 @@ function save(id, data) {
   return chain;
 }
 
-function toggle(date) {
+function toggle(date, which) {
   if (!db || !me || busy[date] || date < iso(new Date())) return;
   const cur = docs.get(me) || { name: myName, dates: {} };
   const next = Object.assign({}, cur.dates || {});
-  if (typeof next[date] === "number") delete next[date]; else next[date] = Date.now();
+  const v = next[date];
+  // Erneutes Antippen der aktiven Antwort nimmt sie zurück.
+  if (which === "yes") { if (v > 0) delete next[date]; else next[date] = Date.now(); }
+  else { if (v === 0) delete next[date]; else next[date] = 0; }
   const data = { name: cur.name || myName, dates: next };
   docs.set(me, data);
   busy[date] = true;
@@ -493,7 +541,7 @@ function choose(id, name) {
 
 $list.addEventListener("click", (ev) => {
   const b = ev.target.closest("button[data-date]");
-  if (b) toggle(b.dataset.date);
+  if (b) toggle(b.dataset.date, b.dataset.set);
 });
 document.querySelector(".filters").addEventListener("click", (ev) => {
   const b = ev.target.closest("button[data-filter]");
@@ -504,7 +552,7 @@ document.querySelector(".filters").addEventListener("click", (ev) => {
 });
 $whoList.addEventListener("click", (ev) => {
   const b = ev.target.closest("button[data-id]");
-  if (b) choose(b.dataset.id, b.textContent);
+  if (b) choose(b.dataset.id, b.dataset.name);
 });
 $("newForm").addEventListener("submit", (ev) => {
   ev.preventDefault();
@@ -542,7 +590,7 @@ if (configured) {
       render();
     });
   } catch (e) {
-    toast("Firebase konnte nicht gestartet werden. Prüfe die Werte in index.html.");
+    toast("Firebase konnte nicht gestartet werden. Prüfe die Werte in config.js.");
   }
 }
 </script>
