@@ -180,6 +180,31 @@ details.past summary { cursor: pointer; font-weight: 600; }
 .pastrow .pd { color: var(--muted); font-variant-numeric: tabular-nums; }
 .pastrow .pn { overflow-wrap: anywhere; }
 
+/* Verwalten */
+.manage { display: flex; flex-direction: column; gap: 10px; }
+.mrow {
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px 12px; align-items: center;
+  padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg);
+}
+.mrow.confirm { border-color: var(--reserve); background: var(--reserve-bg); }
+.mrow .av {
+  width: 36px; height: 36px; border-radius: 50%; background: var(--ball); color: var(--ball-ink);
+  display: flex; align-items: center; justify-content: center; font-family: var(--font-display); font-weight: 700; font-size: 1.3rem;
+}
+.mrow .mname { min-width: 0; display: flex; flex-direction: column; line-height: 1.2; }
+.mrow .mname strong { font-family: var(--font-display); font-size: 1.35rem; overflow-wrap: anywhere; }
+.mrow .mname span { font-size: 13px; color: var(--muted); }
+.mrow button {
+  font: inherit; font-weight: 600; font-size: 14px; min-height: 44px; padding: 8px 14px; border-radius: 8px; cursor: pointer;
+  border: 1.5px solid var(--reserve); background: transparent; color: var(--reserve);
+}
+.mrow .cbox { grid-column: 1 / -1; display: flex; flex-direction: column; gap: 8px; }
+.mrow .cbox p { margin: 0; font-size: 14px; }
+.mrow .cbtns { display: flex; gap: 8px; }
+.mrow .cbtns button { flex: 1; }
+.mrow .cbtns button.danger { background: var(--reserve); color: var(--bg); }
+.mrow .cbtns button.cancel { border-color: var(--line); color: var(--ink); }
+
 /* Meldung */
 .toast {
   position: fixed; left: 16px; right: 16px; margin-inline: auto; max-width: 728px; z-index: 20;
@@ -194,12 +219,12 @@ details.past summary { cursor: pointer; font-weight: 600; }
   background: var(--bg); padding-block: 6px;
 }
 .tabbar .in {
-  display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;
-  background: var(--surface); border: 2px solid var(--accent); border-radius: 14px; padding: 5px;
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px;
+  background: var(--surface); border: 2px solid var(--accent); border-radius: 14px; padding: 4px;
 }
 .tabbar button {
   min-height: 54px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
-  font: inherit; font-size: 14px; font-weight: 600; background: transparent; border: 0; border-radius: 9px;
+  font: inherit; font-size: 13px; font-weight: 600; background: transparent; border: 0; border-radius: 9px; min-width: 0;
   color: var(--ink); cursor: pointer;
 }
 .tabbar button svg { width: 22px; height: 22px; }
@@ -234,6 +259,10 @@ details.past summary { cursor: pointer; font-weight: 600; }
       <button type="button" role="tab" id="tab-personen" data-tab="personen" aria-selected="false" aria-controls="panel-personen">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6"/><circle cx="17.5" cy="9" r="2.5"/><path d="M17.5 14c2.5 0 4 1.7 4 4.5"/></svg>
         Personen
+      </button>
+      <button type="button" role="tab" id="tab-verwalten" data-tab="verwalten" aria-selected="false" aria-controls="panel-verwalten">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>
+        Verwalten
       </button>
     </div>
   </nav>
@@ -291,6 +320,13 @@ details.past summary { cursor: pointer; font-weight: 600; }
         </form>
         <p class="hint">Dein Name wird auf diesem Gerät gespeichert. Hier kannst du ihn jederzeit wechseln.</p>
       </section>
+
+    <section class="tabpanel" id="panel-verwalten" role="tabpanel" aria-labelledby="tab-verwalten" hidden>
+      <section class="panel" aria-labelledby="manageTitle">
+        <h2 id="manageTitle">Personen verwalten</h2>
+        <p class="hint">Löschen entfernt eine Person mit allen ihren Antworten und lässt sich nicht rückgängig machen. Die Statistik der anderen kann sich dadurch ändern, weil bisherige Einsätze neu berechnet werden.</p>
+        <div class="manage" id="manageList"></div>
+      </section>
     </section>
   </main>
 
@@ -299,7 +335,7 @@ details.past summary { cursor: pointer; font-weight: 600; }
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
-import { getFirestore, collection, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 
 // Die Firebase-Werte stehen in der separaten Datei config.js.
 import { firebaseConfig } from "./config.js";
@@ -323,7 +359,9 @@ const $list = $("list"), $banner = $("banner"), $meLine = $("meLine"), $toast = 
 const $people = $("people"), $peopleHint = $("peopleHint"), $past = $("past"), $pastList = $("pastList"), $pastSummary = $("pastSummary");
 const $whoList = $("whoList");
 const $idBar = $("idBar"), $idName = $("idName"), $idAvatar = $("idAvatar");
-const TABS = ["termine", "statistik", "personen"];
+const TABS = ["termine", "statistik", "personen", "verwalten"];
+const $manageList = $("manageList");
+let confirmDel = null;
 
 let db = null, configured = true;
 let docs = new Map();      // id -> { name, dates: { "YYYY-MM-DD": Zeitpunkt (Ich kann) | 0 (Kann nicht) } }
@@ -431,6 +469,56 @@ function renderWho() {
   });
 }
 
+function renderManage() {
+  $manageList.replaceChildren();
+  if (!configured) return;
+  if (!loaded) { $manageList.appendChild(el("p", "hint", "Namen werden geladen …")); return; }
+  const all = Array.from(docs.entries()).sort((a, b) => (a[1].name || "").localeCompare(b[1].name || "", "de"));
+  if (!all.length) { $manageList.appendChild(el("p", "hint", "Es ist noch niemand angelegt.")); return; }
+  all.forEach(([id, v]) => {
+    const label = v.name || id;
+    const answers = Object.keys(v.dates || {}).length;
+    const asking = confirmDel === id;
+    const row = el("div", "mrow" + (asking ? " confirm" : ""));
+    row.appendChild(el("div", "av", label.charAt(0).toUpperCase()));
+    const nm = el("div", "mname");
+    nm.appendChild(el("strong", null, label + (id === me ? " (du)" : "")));
+    nm.appendChild(el("span", null, answers + (answers === 1 ? " Antwort" : " Antworten")));
+    row.appendChild(nm);
+    if (asking) {
+      const box = el("div", "cbox");
+      box.appendChild(el("p", null, "«" + label + "» wirklich löschen? Alle Antworten dieser Person gehen verloren."));
+      const btns = el("div", "cbtns");
+      const yes = el("button", "danger", "Ja, löschen");
+      yes.type = "button"; yes.dataset.delyes = id;
+      const no = el("button", "cancel", "Abbrechen");
+      no.type = "button"; no.dataset.delno = id;
+      btns.appendChild(yes); btns.appendChild(no);
+      box.appendChild(btns);
+      row.appendChild(box);
+    } else {
+      const b = el("button", null, "Löschen");
+      b.type = "button"; b.dataset.del = id;
+      b.disabled = !db;
+      row.appendChild(b);
+    }
+    $manageList.appendChild(row);
+  });
+}
+
+function removePerson(id) {
+  if (!db) return;
+  confirmDel = null;
+  if (id === me) {
+    me = null; myName = "";
+    try { localStorage.removeItem("tennis-me"); localStorage.removeItem("tennis-name"); } catch (e) {}
+  }
+  chain = chain.then(() => deleteDoc(doc(db, "signups", id)))
+    .then(() => toast("Person gelöscht."))
+    .catch(() => toast("Das Löschen hat nicht geklappt. Erlaube es in den Firestore-Regeln mit «allow delete: if true»."));
+  render();
+}
+
 function showTab() {
   TABS.forEach((t) => {
     $("panel-" + t).hidden = t !== tab;
@@ -447,6 +535,7 @@ function render() {
   $list.replaceChildren();
   renderPeople(c);
   renderWho();
+  renderManage();
   showTab();
 
   if (me) {
@@ -629,6 +718,13 @@ document.querySelector(".tabbar").addEventListener("click", (ev) => {
   tab = b.dataset.tab;
   render();
   window.scrollTo(0, 0);
+});
+$manageList.addEventListener("click", (ev) => {
+  const del = ev.target.closest("button[data-del]");
+  if (del) { confirmDel = del.dataset.del; render(); return; }
+  if (ev.target.closest("button[data-delno]")) { confirmDel = null; render(); return; }
+  const yes = ev.target.closest("button[data-delyes]");
+  if (yes) removePerson(yes.dataset.delyes);
 });
 $whoList.addEventListener("click", (ev) => {
   const b = ev.target.closest("button[data-id]");
