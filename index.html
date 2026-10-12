@@ -172,6 +172,15 @@ h3.month { font-family: var(--font-display); font-weight: 600; font-size: 1.3rem
 .act button.yes.on { background: var(--accent); color: var(--accent-ink); }
 .act button.no.on { background: var(--reserve-bg); color: var(--reserve); border-color: var(--reserve); }
 .act button:disabled { opacity: 0.5; cursor: default; }
+.vote { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; display: grid; gap: 8px; }
+.vote h4 { margin: 0; font-size: 14px; }
+.vote button {
+  font: inherit; text-align: left; border-radius: 8px; padding: 10px 12px; cursor: pointer; min-height: 44px;
+  border: 1.5px solid var(--line); background: transparent; color: var(--ink);
+}
+.vote button.on { border-color: var(--accent); background: var(--accent); color: var(--accent-ink); }
+.vote button:disabled { opacity: 0.5; cursor: default; }
+.vote .hint { margin: 0; font-size: 13px; color: var(--muted); }
 .empty { color: var(--muted); padding: 24px 0; text-align: center; margin: 0; }
 details.past { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
 details.past[hidden] { display: none; }
@@ -309,6 +318,7 @@ details.past summary { cursor: pointer; font-weight: 600; }
         <p id="howIntro"></p>
         <div id="howRules"></div>
         <p class="hint"><strong>Zur Erklärung:</strong> Der Reserve-Zähler gleicht aus, wenn jemand an vielen Freitagen «Ich kann» gesagt hat und trotzdem oft nicht drankam. Wer noch nie gespielt hat, gilt bei «am längsten nicht gespielt» als Erste/r. Das Los ist für jede Person und jeden Termin fest, damit alle dieselbe Aufstellung sehen. Bei vergangenen Terminen zählt als Reserve, wer heute «Ich kann» eingetragen hat und in der festgehaltenen Aufstellung fehlt.</p>
+        <p>Sind wir bei einem Termin genau 6, stimmen die Spielenden ab Donnerstag 12:00 über das Spielsystem ab: Option 1 (Platz 1 Doppel, Platz 2 Einzel Short Set) oder Option 2 (beide Plätze Kings). Bei Gleichstand gewinnt Option 1, weil wir fürs Interclub Doppel üben müssen.</p>
         <p>Die Aufteilung passt sich laufend an, wenn sich jemand ein- oder austrägt. Nach einem Termin wird die Aufstellung festgehalten und bleibt unverändert.</p>
       </details>
       <div class="filters" role="group" aria-label="Termine filtern">
@@ -896,6 +906,23 @@ function render() {
     if (mineState === "going") mid.appendChild(el("p", "status", "Du spielst voraussichtlich."));
     if (mineState === "res") mid.appendChild(el("p", "status res", "Du bist Reserve (Platz " + (resIdx + 1) + ") und rückst nach, wenn jemand absagt."));
     if (mineState === "no") mid.appendChild(el("p", "status", "Du hast für diesen Termin abgesagt."));
+    if (r.going.length === 6 && Date.now() >= new Date(dt.getFullYear(), dt.getMonth(), dt.getDate() - 1, 12).getTime()) {
+      const tally = { 1: [], 2: [] };
+      r.going.forEach((e) => { const vt = docs.get(e.uid) && docs.get(e.uid).votes ? docs.get(e.uid).votes[d] : 0; if (vt === 1 || vt === 2) tally[vt].push({ uid: e.uid }); });
+      const myVote = isGoing && docs.get(me) && docs.get(me).votes ? docs.get(me).votes[d] : 0;
+      const win = tally[2].length > tally[1].length ? 2 : 1;
+      const box = el("div", "vote");
+      box.appendChild(el("h4", null, "Spielsystem (wir sind 6)"));
+      [[1, "Option 1: Platz 1 Doppel (2 vs. 2), Platz 2 Einzel Short Set (1 vs. 1)"], [2, "Option 2: Platz 1 und Platz 2 Kings (2 vs. 1)"]].forEach(([k, label]) => {
+        const vb = el("button", myVote === k ? "on" : null, (myVote === k ? "✓ " : "") + label + " · " + tally[k].length + (tally[k].length === 1 ? " Stimme" : " Stimmen"));
+        vb.type = "button"; vb.dataset.vdate = d; vb.dataset.vote = String(k);
+        vb.disabled = !canWrite || !isGoing || !!busy[d];
+        box.appendChild(vb);
+        if (tally[k].length) { const nm = el("p", "hint"); nm.appendChild(nameList(tally[k])); box.appendChild(nm); }
+      });
+      box.appendChild(el("p", "hint", "Zurzeit gilt Option " + win + ". Bei Gleichstand gewinnt Option 1, weil wir fürs Interclub Doppel üben müssen." + (isGoing ? "" : " Abstimmen dürfen nur die Spielenden.")));
+      mid.appendChild(box);
+    }
     row.appendChild(mid);
 
     const act = el("div", "act");
@@ -961,7 +988,19 @@ function toggle(date, which) {
   // Erneutes Antippen der aktiven Antwort nimmt sie zurück.
   if (which === "yes") { if (v > 0) delete next[date]; else next[date] = Date.now(); }
   else { if (v === 0) delete next[date]; else next[date] = 0; }
-  const data = { name: cur.name || myName, dates: next };
+  const data = { name: cur.name || myName, dates: next, votes: cur.votes || {} };
+  docs.set(me, data);
+  busy[date] = true;
+  render();
+  save(me, data).then(() => { delete busy[date]; render(); });
+}
+
+function castVote(date, k) {
+  if (!db || !me || busy[date] || date < iso(new Date())) return;
+  const cur = docs.get(me) || { name: myName, dates: {} };
+  const votes = Object.assign({}, cur.votes || {});
+  if (votes[date] === k) delete votes[date]; else votes[date] = k;
+  const data = { name: cur.name || myName, dates: cur.dates || {}, votes };
   docs.set(me, data);
   busy[date] = true;
   render();
@@ -972,7 +1011,7 @@ function choose(id, name) {
   me = id; myName = name;
   try { localStorage.setItem("tennis-me", id); localStorage.setItem("tennis-name", name); } catch (e) {}
   if (!docs.has(id)) {
-    const data = { name, dates: {} };
+    const data = { name, dates: {}, votes: {} };
     docs.set(id, data);
     save(id, data);
   }
@@ -982,6 +1021,8 @@ function choose(id, name) {
 }
 
 $list.addEventListener("click", (ev) => {
+  const vb = ev.target.closest("button[data-vdate]");
+  if (vb) { castVote(vb.dataset.vdate, +vb.dataset.vote); return; }
   const b = ev.target.closest("button[data-date]");
   if (b) toggle(b.dataset.date, b.dataset.set);
 });
@@ -1044,7 +1085,7 @@ if (configured) {
       const next = new Map();
       snap.forEach((d) => {
         const v = d.data();
-        if (v && typeof v.name === "string") next.set(d.id, { name: v.name, dates: (v.dates && typeof v.dates === "object") ? v.dates : {} });
+        if (v && typeof v.name === "string") next.set(d.id, { name: v.name, dates: (v.dates && typeof v.dates === "object") ? v.dates : {}, votes: (v.votes && typeof v.votes === "object") ? v.votes : {} });
       });
       docs = next; loaded = true;
       render();
