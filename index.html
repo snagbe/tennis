@@ -276,7 +276,7 @@ details.past summary { cursor: pointer; font-weight: 600; }
   <header>
     <div class="eyebrow" id="eyebrow">Tennis</div>
     <h1>Freitagstraining</h1>
-    <p class="venues">Plätze: Gefu Swisskalb (Tennis / Hartplatz / Ballon) · MIDOMA (Tennis / Hartplatz / Ballon)</p>
+    <p class="venues" id="venues"></p>
   </header>
 
   <nav class="tabbar" aria-label="Bereiche">
@@ -318,7 +318,7 @@ details.past summary { cursor: pointer; font-weight: 600; }
         <p id="howIntro"></p>
         <div id="howRules"></div>
         <p class="hint"><strong>Zur Erklärung:</strong> Der Reserve-Zähler gleicht aus, wenn jemand an vielen Freitagen «Ich kann» gesagt hat und trotzdem oft nicht drankam. Wer noch nie gespielt hat, gilt bei «am längsten nicht gespielt» als Erste/r. Das Los ist für jede Person und jeden Termin fest, damit alle dieselbe Aufstellung sehen. Bei vergangenen Terminen zählt als Reserve, wer heute «Ich kann» eingetragen hat und in der festgehaltenen Aufstellung fehlt.</p>
-        <p>Sind wir bei einem Termin genau 6, stimmen die Spielenden ab Donnerstag 12:00 über das Spielsystem ab: Option 1 (Platz 1 Doppel, Platz 2 Einzel Short Set) oder Option 2 (beide Plätze Kings). Bei Gleichstand gewinnt Option 1, weil wir fürs Interclub Doppel üben müssen.</p>
+        <p id="howVote"></p>
         <p>Die Aufteilung passt sich laufend an, wenn sich jemand ein- oder austrägt. Nach einem Termin wird die Aufstellung festgehalten und bleibt unverändert.</p>
       </details>
       <div class="filters" role="group" aria-label="Termine filtern">
@@ -397,9 +397,14 @@ const PRIO_TEXT = {
   bench: "Wer schon oft «Ich kann» gesagt hat und trotzdem nicht spielen durfte (Reserve), kommt zuerst.",
   last: "Wer am längsten nicht gespielt hat, kommt zuerst."
 };
-const TAIL = ["bench", "last"];
-const PRIO_LABEL = { plays: "Weniger gespielt zuerst", avail: "Weniger verfügbar zuerst" };
-const DEFAULTS = { cap: 6, start: "2026-10-16", end: "2027-04-09", costTotal: 3600, minPresent: 4, prio: ["plays", "avail"] };
+const PRIO_LABEL = { plays: "Weniger gespielt zuerst", avail: "Weniger verfügbar zuerst", bench: "Öfter Reserve gewesen zuerst", last: "Am längsten nicht gespielt zuerst" };
+const PRIO_KEYS = ["plays", "avail", "bench", "last"];
+const DEFAULTS = { cap: 6, start: "2026-10-16", end: "2027-04-09", costTotal: 3600, minPresent: 4, prio: ["plays", "avail", "bench", "last"],
+  timeFrom: "20:30", timeTo: "22:00",
+  venues: "Gefu Swisskalb (Tennis / Hartplatz / Ballon) · MIDOMA (Tennis / Hartplatz / Ballon)",
+  voteOn: true, voteSize: 6, voteDaysBefore: 1, voteHour: 12,
+  voteOpt1: "Platz 1 Doppel (2 vs. 2), Platz 2 Einzel Short Set (1 vs. 1)", voteOpt2: "Platz 1 und Platz 2 Kings (2 vs. 1)",
+  voteTie: 1, voteReason: "wir müssen fürs Interclub Doppel üben" };
 let S = Object.assign({}, DEFAULTS, { prio: DEFAULTS.prio.slice() });
 const dates = [];
 function validDate(x) { return typeof x === "string" && /^\d{4}-\d{2}-\d{2}$/.test(x) && iso(parse(x)) === x; }
@@ -413,7 +418,24 @@ function normSettings(v) {
   if (o.end < o.start) { o.start = DEFAULTS.start; o.end = DEFAULTS.end; }
   if (typeof v.costTotal === "number" && isFinite(v.costTotal) && v.costTotal >= 0 && v.costTotal <= 1000000) o.costTotal = v.costTotal;
   if (int(v.minPresent, 0, 20)) o.minPresent = v.minPresent;
-  if (Array.isArray(v.prio)) o.prio = v.prio.filter((k, n, a) => (k === "plays" || k === "avail") && a.indexOf(k) === n);
+  if (Array.isArray(v.prio)) {
+    o.prio = v.prio.filter((k, n, a) => PRIO_KEYS.indexOf(k) >= 0 && a.indexOf(k) === n);
+    // Älter gespeicherte Regeln kannten nur die ersten zwei. Die neuen hängen hinten an.
+    if (v.prioV !== 2) PRIO_KEYS.forEach((k) => { if (o.prio.indexOf(k) < 0) o.prio.push(k); });
+  }
+  const time = (x) => typeof x === "string" && /^([01]\d|2[0-3]):[0-5]\d$/.test(x);
+  const txt = (x, max) => typeof x === "string" && x.trim().length > 0 && x.length <= max;
+  if (time(v.timeFrom)) o.timeFrom = v.timeFrom;
+  if (time(v.timeTo)) o.timeTo = v.timeTo;
+  if (typeof v.venues === "string" && v.venues.length <= 300) o.venues = v.venues.trim();
+  if (typeof v.voteOn === "boolean") o.voteOn = v.voteOn;
+  if (int(v.voteSize, 2, 20)) o.voteSize = v.voteSize;
+  if (int(v.voteDaysBefore, 0, 6)) o.voteDaysBefore = v.voteDaysBefore;
+  if (int(v.voteHour, 0, 23)) o.voteHour = v.voteHour;
+  if (txt(v.voteOpt1, 200)) o.voteOpt1 = v.voteOpt1.trim();
+  if (txt(v.voteOpt2, 200)) o.voteOpt2 = v.voteOpt2.trim();
+  if (v.voteTie === 1 || v.voteTie === 2) o.voteTie = v.voteTie;
+  if (typeof v.voteReason === "string" && v.voteReason.length <= 200) o.voteReason = v.voteReason.trim();
   return o;
 }
 function rebuildDates() {
@@ -520,7 +542,7 @@ function compute() {
       bench: (x, y) => (benched[y.uid] || 0) - (benched[x.uid] || 0),
       last: (x, y) => { const lx = lastPlay[x.uid] || "", ly = lastPlay[y.uid] || ""; return lx < ly ? -1 : lx > ly ? 1 : 0; }
     };
-    const order = S.prio.concat(TAIL).map((k) => cmp[k]);
+    const order = S.prio.map((k) => cmp[k]);
     av.sort((x, y) => {
       for (let n = 0; n < order.length; n++) { const r = order[n](x, y); if (r) return r; }
       return luck(d, x.uid) - luck(d, y.uid) || (x.uid < y.uid ? -1 : 1);
@@ -721,9 +743,12 @@ function renderAdmin() {
   body.appendChild(field("admEnd", "Letzter Termin", "date", S.end));
   body.appendChild(field("admCost", "Kosten gesamt (Fr.)", "number", S.costTotal, { min: 0, step: "0.05", inputmode: "decimal" }));
   body.appendChild(field("admMin", "Weniger Spielende als … : alle zahlen", "number", S.minPresent, { min: 0, max: 20, inputmode: "numeric" }));
-  body.appendChild(el("p", "hint", "Reihenfolge der Verteilung. Oben gilt zuerst. Danach gelten immer: Reserve-Zähler, am längsten nicht gespielt, zuletzt das Los."));
+  body.appendChild(field("admFrom", "Beginn (Uhrzeit)", "time", S.timeFrom));
+  body.appendChild(field("admTo", "Ende (Uhrzeit)", "time", S.timeTo));
+  body.appendChild(field("admVenues", "Plätze (Text, leer = nichts anzeigen)", "text", S.venues, { maxlength: 300 }));
+  body.appendChild(el("p", "hint", "Reihenfolge der Verteilung. Oben gilt zuerst, abgehakt sind aktive Regeln. Bei Gleichstand entscheidet zuletzt das Los."));
   const pr = el("div", "prio");
-  const all = adminDraft.prio.concat(["plays", "avail"].filter((k) => adminDraft.prio.indexOf(k) < 0));
+  const all = adminDraft.prio.concat(PRIO_KEYS.filter((k) => adminDraft.prio.indexOf(k) < 0));
   all.forEach((k, n) => {
     const on = adminDraft.prio.indexOf(k) >= 0;
     const row = el("div", "prow");
@@ -736,6 +761,17 @@ function renderAdmin() {
     pr.appendChild(row);
   });
   body.appendChild(pr);
+  body.appendChild(el("p", "hint", "Abstimmung zum Spielsystem"));
+  const vl = el("label", null, "Abstimmung aktiv");
+  const vc = el("input"); vc.type = "checkbox"; vc.id = "admVoteOn"; vc.checked = S.voteOn; vl.appendChild(vc);
+  body.appendChild(vl);
+  body.appendChild(field("admVoteSize", "Abstimmung nur, wenn genau so viele spielen", "number", S.voteSize, { min: 2, max: 20, inputmode: "numeric" }));
+  body.appendChild(field("admVoteDays", "Beginnt so viele Tage vor dem Termin (0–6)", "number", S.voteDaysBefore, { min: 0, max: 6, inputmode: "numeric" }));
+  body.appendChild(field("admVoteHour", "… um diese volle Stunde (0–23)", "number", S.voteHour, { min: 0, max: 23, inputmode: "numeric" }));
+  body.appendChild(field("admVoteOpt1", "Option 1", "text", S.voteOpt1, { maxlength: 200 }));
+  body.appendChild(field("admVoteOpt2", "Option 2", "text", S.voteOpt2, { maxlength: 200 }));
+  body.appendChild(field("admVoteTie", "Bei Gleichstand gewinnt Option (1 oder 2)", "number", S.voteTie, { min: 1, max: 2, inputmode: "numeric" }));
+  body.appendChild(field("admVoteReason", "Begründung (nach «weil», leer = keine)", "text", S.voteReason, { maxlength: 200 }));
   if (adminErr) body.appendChild(el("p", "hint", adminErr));
   const save = el("button", "primary", "Speichern"); save.type = "button"; save.id = "admSave";
   const out = el("button", null, "Abmelden"); out.type = "button"; out.id = "admOut";
@@ -743,10 +779,16 @@ function renderAdmin() {
 }
 function adminSave() {
   const num = (id) => Number($(id).value);
-  const v = { cap: num("admCap"), start: $("admStart").value, end: $("admEnd").value, costTotal: num("admCost"), minPresent: num("admMin"), prio: adminDraft.prio.slice() };
+  const v = {
+    cap: num("admCap"), start: $("admStart").value, end: $("admEnd").value, costTotal: num("admCost"), minPresent: num("admMin"),
+    prio: adminDraft.prio.slice(), prioV: 2,
+    timeFrom: $("admFrom").value, timeTo: $("admTo").value, venues: $("admVenues").value.trim(),
+    voteOn: $("admVoteOn").checked, voteSize: num("admVoteSize"), voteDaysBefore: num("admVoteDays"), voteHour: num("admVoteHour"),
+    voteOpt1: $("admVoteOpt1").value.trim(), voteOpt2: $("admVoteOpt2").value.trim(), voteTie: num("admVoteTie"), voteReason: $("admVoteReason").value.trim()
+  };
   const n = normSettings(v);
-  if (n.cap !== v.cap || n.start !== v.start || n.end !== v.end || n.costTotal !== v.costTotal || n.minPresent !== v.minPresent) {
-    adminErr = "Bitte prüfe die Werte (Plätze 1–20, Termine als Datum, letzter Termin nicht vor dem ersten)."; renderAdmin(); return;
+  if (Object.keys(v).some((k) => JSON.stringify(n[k]) !== JSON.stringify(v[k]))) {
+    adminErr = "Bitte prüfe die Werte (Plätze 1–20, Daten, Uhrzeiten, Abstimmung ausgefüllt, letzter Termin nicht vor dem ersten)."; renderAdmin(); return;
   }
   adminErr = "";
   chain = chain.then(() => setDoc(doc(db, "settings", "config"), v))
@@ -800,12 +842,23 @@ function showTab() {
 }
 
 function fmtShort(d) { return parse(d).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" }); }
+function voteOpenAt(d) {
+  const dt = parse(d);
+  return new Date(dt.getFullYear(), dt.getMonth(), dt.getDate() - S.voteDaysBefore, S.voteHour).getTime();
+}
+function voteDayName() {
+  const dt = parse(S.start);
+  return new Date(dt.getFullYear(), dt.getMonth(), dt.getDate() - S.voteDaysBefore).toLocaleDateString("de-DE", { weekday: "long" });
+}
 function renderRules() {
-  $("eyebrow").textContent = "Tennis · jeden " + parse(S.start).toLocaleDateString("de-DE", { weekday: "long" }) + " · 20:30–22:00 Uhr · " + fmtShort(S.start) + " bis " + fmtShort(S.end);
+  $("eyebrow").textContent = "Tennis · jeden " + parse(S.start).toLocaleDateString("de-DE", { weekday: "long" }) + " · " + S.timeFrom + "–" + S.timeTo + " Uhr · " + fmtShort(S.start) + " bis " + fmtShort(S.end);
+  $("venues").textContent = S.venues ? "Plätze: " + S.venues : ""; $("venues").hidden = !S.venues;
+  const vt = $("howVote"); vt.hidden = !S.voteOn;
+  if (S.voteOn) vt.textContent = "Sind wir bei einem Termin genau " + S.voteSize + ", stimmen die Spielenden ab " + voteDayName() + " " + String(S.voteHour).padStart(2, "0") + ":00 über das Spielsystem ab: Option 1 (" + S.voteOpt1 + ") oder Option 2 (" + S.voteOpt2 + "). Bei Gleichstand gewinnt Option " + S.voteTie + (S.voteReason ? ", weil " + S.voteReason : "") + ".";
   $("filterFree").textContent = "Weniger als " + S.cap;
   $("howIntro").textContent = "Trag dich für alle Termine ein, an denen du kannst. Pro Termin spielen " + S.cap + " Personen. Die Reihenfolge ist:";
   const box = $("howRules"); box.replaceChildren();
-  const list = S.prio.concat(TAIL);
+  const list = S.prio.slice();
   list.forEach((k, n) => {
     box.appendChild(el("p", null, (n + 1) + ". " + PRIO_TEXT[k]));
   });
@@ -906,21 +959,21 @@ function render() {
     if (mineState === "going") mid.appendChild(el("p", "status", "Du spielst voraussichtlich."));
     if (mineState === "res") mid.appendChild(el("p", "status res", "Du bist Reserve (Platz " + (resIdx + 1) + ") und rückst nach, wenn jemand absagt."));
     if (mineState === "no") mid.appendChild(el("p", "status", "Du hast für diesen Termin abgesagt."));
-    if (r.going.length === 6 && Date.now() >= new Date(dt.getFullYear(), dt.getMonth(), dt.getDate() - 1, 12).getTime()) {
+    if (S.voteOn && r.going.length === S.voteSize && Date.now() >= voteOpenAt(d)) {
       const tally = { 1: [], 2: [] };
       r.going.forEach((e) => { const vt = docs.get(e.uid) && docs.get(e.uid).votes ? docs.get(e.uid).votes[d] : 0; if (vt === 1 || vt === 2) tally[vt].push({ uid: e.uid }); });
       const myVote = isGoing && docs.get(me) && docs.get(me).votes ? docs.get(me).votes[d] : 0;
-      const win = tally[2].length > tally[1].length ? 2 : 1;
+      const win = tally[1].length === tally[2].length ? S.voteTie : (tally[2].length > tally[1].length ? 2 : 1);
       const box = el("div", "vote");
-      box.appendChild(el("h4", null, "Spielsystem (wir sind 6)"));
-      [[1, "Option 1: Platz 1 Doppel (2 vs. 2), Platz 2 Einzel Short Set (1 vs. 1)"], [2, "Option 2: Platz 1 und Platz 2 Kings (2 vs. 1)"]].forEach(([k, label]) => {
+      box.appendChild(el("h4", null, "Spielsystem (wir sind " + S.voteSize + ")"));
+      [[1, "Option 1: " + S.voteOpt1], [2, "Option 2: " + S.voteOpt2]].forEach(([k, label]) => {
         const vb = el("button", myVote === k ? "on" : null, (myVote === k ? "✓ " : "") + label + " · " + tally[k].length + (tally[k].length === 1 ? " Stimme" : " Stimmen"));
         vb.type = "button"; vb.dataset.vdate = d; vb.dataset.vote = String(k);
         vb.disabled = !canWrite || !isGoing || !!busy[d];
         box.appendChild(vb);
         if (tally[k].length) { const nm = el("p", "hint"); nm.appendChild(nameList(tally[k])); box.appendChild(nm); }
       });
-      box.appendChild(el("p", "hint", "Zurzeit gilt Option " + win + ". Bei Gleichstand gewinnt Option 1, weil wir fürs Interclub Doppel üben müssen." + (isGoing ? "" : " Abstimmen dürfen nur die Spielenden.")));
+      box.appendChild(el("p", "hint", "Zurzeit gilt Option " + win + ". Bei Gleichstand gewinnt Option " + S.voteTie + (S.voteReason ? ", weil " + S.voteReason : "") + "." + (isGoing ? "" : " Abstimmen dürfen nur die Spielenden.")));
       mid.appendChild(box);
     }
     row.appendChild(mid);
