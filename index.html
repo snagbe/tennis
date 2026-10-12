@@ -1129,10 +1129,16 @@ if (configured) {
     db = getFirestore(app);
     onAuthStateChanged(getAuth(app), (u) => { authUser = u; adminDraft = null; adminErr = ""; renderAdmin(); });
     onSnapshot(doc(db, "settings", "config"), (snap) => {
+      const prev = JSON.stringify(S);
       S = normSettings(snap.exists() ? snap.data() : null);
       rebuildDates();
+      render();
+      // Das Formular nicht neu aufbauen, wenn sich nichts geändert hat oder gerade getippt wird.
+      const editing = document.activeElement && $("adminBody").contains(document.activeElement) && document.activeElement.tagName === "INPUT";
+      if (JSON.stringify(S) === prev && adminDraft) return;
+      if (editing) return;
       adminDraft = null;
-      render(); renderAdmin();
+      renderAdmin();
     }, () => {});
     onSnapshot(collection(db, "signups"), (snap) => {
       const next = new Map();
