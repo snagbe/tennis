@@ -779,7 +779,7 @@ function renderAdmin() {
   body.appendChild(field("admVoteOpt1", "Option 1", "text", S.voteOpt1, { maxlength: 200 }));
   body.appendChild(field("admVoteOpt2", "Option 2", "text", S.voteOpt2, { maxlength: 200 }));
   body.appendChild(field("admVoteTie", "Bei Gleichstand gewinnt Option (1 oder 2)", "number", S.voteTie, { min: 1, max: 2, inputmode: "numeric" }));
-  body.appendChild(field("admVoteReason", "Begründung (nach «weil», leer = keine)", "text", S.voteReason, { maxlength: 200 }));
+  body.appendChild(field("admVoteReason", "Begründung (steht nach einem Doppelpunkt, leer = keine)", "text", S.voteReason, { maxlength: 200 }));
   if (adminErr) body.appendChild(el("p", "hint", adminErr));
   const save = el("button", "primary", "Speichern"); save.type = "button"; save.id = "admSave";
   const out = el("button", null, "Abmelden"); out.type = "button"; out.id = "admOut";
@@ -862,7 +862,7 @@ function renderRules() {
   $("eyebrow").textContent = "Tennis · jeden " + parse(S.start).toLocaleDateString("de-DE", { weekday: "long" }) + " · " + S.timeFrom + "–" + S.timeTo + " Uhr · " + fmtShort(S.start) + " bis " + fmtShort(S.end);
   $("venues").textContent = S.venues ? "Plätze: " + S.venues : ""; $("venues").hidden = !S.venues;
   const vt = $("howVote"); vt.hidden = !S.voteOn;
-  if (S.voteOn) vt.textContent = "Sind wir bei einem Termin genau " + S.voteSize + ", stimmen die Spielenden ab " + voteDayName() + " " + String(S.voteHour).padStart(2, "0") + ":00 über das Spielsystem ab: Option 1 (" + S.voteOpt1 + ") oder Option 2 (" + S.voteOpt2 + "). Bei Gleichstand gewinnt Option " + S.voteTie + (S.voteReason ? ", weil " + S.voteReason : "") + ".";
+  if (S.voteOn) vt.textContent = "Sind wir bei einem Termin genau " + S.voteSize + ", stimmen die Spielenden ab " + voteDayName() + " " + String(S.voteHour).padStart(2, "0") + ":00 über das Spielsystem ab: Option 1 (" + S.voteOpt1 + ") oder Option 2 (" + S.voteOpt2 + "). Bei Gleichstand gewinnt Option " + S.voteTie + (S.voteReason ? ": " + S.voteReason : "") + ".";
   $("filterFree").textContent = "Weniger als " + S.cap;
   $("howIntro").textContent = "Trag dich für alle Termine ein, an denen du kannst. Pro Termin spielen " + S.cap + " Personen. Die Reihenfolge ist:";
   const box = $("howRules"); box.replaceChildren();
@@ -989,7 +989,7 @@ function render() {
         vb.appendChild(el("span", "ocount", String(tally[k].length)));
         box.appendChild(vb);
       });
-      box.appendChild(el("p", "hint", "Zurzeit gilt Option " + win + ". Bei Gleichstand gewinnt Option " + S.voteTie + (S.voteReason ? ", weil " + S.voteReason : "") + "."));
+      box.appendChild(el("p", "hint", "Zurzeit gilt Option " + win + ". Bei Gleichstand gewinnt Option " + S.voteTie + (S.voteReason ? ": " + S.voteReason : "") + "."));
       mid.appendChild(box);
     }
     row.appendChild(mid);
