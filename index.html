@@ -172,15 +172,23 @@ h3.month { font-family: var(--font-display); font-weight: 600; font-size: 1.3rem
 .act button.yes.on { background: var(--accent); color: var(--accent-ink); }
 .act button.no.on { background: var(--reserve-bg); color: var(--reserve); border-color: var(--reserve); }
 .act button:disabled { opacity: 0.5; cursor: default; }
-.vote { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; display: grid; gap: 8px; }
-.vote h4 { margin: 0; font-size: 14px; }
-.vote button {
-  font: inherit; text-align: left; border-radius: 8px; padding: 10px 12px; cursor: pointer; min-height: 44px;
-  border: 1.5px solid var(--line); background: transparent; color: var(--ink);
-}
-.vote button.on { border-color: var(--accent); background: var(--accent); color: var(--accent-ink); }
-.vote button:disabled { opacity: 0.5; cursor: default; }
+.vote { border: 2px solid var(--accent); border-radius: 12px; padding: 12px; display: grid; gap: 10px; background: var(--surface); }
+.vote h4 { margin: 0; font-size: 16px; }
 .vote .hint { margin: 0; font-size: 13px; color: var(--muted); }
+.vote button.opt {
+  font: inherit; text-align: left; border-radius: 10px; padding: 12px; cursor: pointer; min-height: 64px;
+  border: 2px solid var(--line); background: var(--bg); color: var(--ink);
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; align-items: center;
+}
+.vote button.opt .radio { font-size: 26px; line-height: 1; color: var(--accent); }
+.vote button.opt .otext { display: flex; flex-direction: column; gap: 2px; font-size: 14px; }
+.vote button.opt .otext strong { font-size: 16px; }
+.vote button.opt .ovoters { font-size: 13px; color: var(--muted); }
+.vote button.opt .ocount { font-size: 22px; font-weight: 700; min-width: 28px; text-align: center; }
+.vote button.opt.lead { border-color: var(--accent); }
+.vote button.opt.on { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.vote button.opt.on .radio, .vote button.opt.on .ovoters { color: var(--accent-ink); }
+.vote button.opt:disabled { opacity: 0.85; cursor: default; }
 .empty { color: var(--muted); padding: 24px 0; text-align: center; margin: 0; }
 details.past { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
 details.past[hidden] { display: none; }
@@ -641,7 +649,7 @@ function renderManage() {
   if (!all.length) { $manageList.appendChild(el("p", "hint", "Es ist noch niemand angelegt.")); return; }
   all.forEach(([id, v]) => {
     const label = v.name || id;
-    const answers = Object.keys(v.dates || {}).length;
+    const answers = Object.keys(v.dates || {}).filter((k) => /^\d{4}-\d{2}-\d{2}$/.test(k)).length;
     const asking = confirmDel === id;
     const row = el("div", "mrow" + (asking ? " confirm" : ""));
     row.appendChild(el("div", "av", label.charAt(0).toUpperCase()));
@@ -961,19 +969,27 @@ function render() {
     if (mineState === "no") mid.appendChild(el("p", "status", "Du hast für diesen Termin abgesagt."));
     if (S.voteOn && r.going.length === S.voteSize && Date.now() >= voteOpenAt(d)) {
       const tally = { 1: [], 2: [] };
-      r.going.forEach((e) => { const vt = docs.get(e.uid) && docs.get(e.uid).votes ? docs.get(e.uid).votes[d] : 0; if (vt === 1 || vt === 2) tally[vt].push({ uid: e.uid }); });
-      const myVote = isGoing && docs.get(me) && docs.get(me).votes ? docs.get(me).votes[d] : 0;
+      r.going.forEach((e) => { const vt = voteOf(e.uid, d); if (vt) tally[vt].push({ uid: e.uid }); });
+      const myVote = isGoing ? voteOf(me, d) : 0;
       const win = tally[1].length === tally[2].length ? S.voteTie : (tally[2].length > tally[1].length ? 2 : 1);
       const box = el("div", "vote");
-      box.appendChild(el("h4", null, "Spielsystem (wir sind " + S.voteSize + ")"));
-      [[1, "Option 1: " + S.voteOpt1], [2, "Option 2: " + S.voteOpt2]].forEach(([k, label]) => {
-        const vb = el("button", myVote === k ? "on" : null, (myVote === k ? "✓ " : "") + label + " · " + tally[k].length + (tally[k].length === 1 ? " Stimme" : " Stimmen"));
+      box.appendChild(el("h4", null, "Abstimmung Spielsystem"));
+      box.appendChild(el("p", "hint", isGoing ? "Wir sind " + S.voteSize + ". Tippe auf deine Wahl. Nochmal tippen nimmt deine Stimme zurück." : "Wir sind " + S.voteSize + ". Abstimmen dürfen nur die Spielenden."));
+      [[1, S.voteOpt1], [2, S.voteOpt2]].forEach(([k, label]) => {
+        const on = myVote === k;
+        const vb = el("button", "opt" + (on ? " on" : "") + (win === k ? " lead" : ""));
         vb.type = "button"; vb.dataset.vdate = d; vb.dataset.vote = String(k);
         vb.disabled = !canWrite || !isGoing || !!busy[d];
+        vb.appendChild(el("span", "radio", on ? "●" : "○"));
+        const tx = el("span", "otext");
+        tx.appendChild(el("strong", null, "Option " + k));
+        tx.appendChild(el("span", null, label));
+        if (tally[k].length) { const nm = el("span", "ovoters"); nm.appendChild(nameList(tally[k])); tx.appendChild(nm); }
+        vb.appendChild(tx);
+        vb.appendChild(el("span", "ocount", String(tally[k].length)));
         box.appendChild(vb);
-        if (tally[k].length) { const nm = el("p", "hint"); nm.appendChild(nameList(tally[k])); box.appendChild(nm); }
       });
-      box.appendChild(el("p", "hint", "Zurzeit gilt Option " + win + ". Bei Gleichstand gewinnt Option " + S.voteTie + (S.voteReason ? ", weil " + S.voteReason : "") + "." + (isGoing ? "" : " Abstimmen dürfen nur die Spielenden.")));
+      box.appendChild(el("p", "hint", "Zurzeit gilt Option " + win + ". Bei Gleichstand gewinnt Option " + S.voteTie + (S.voteReason ? ", weil " + S.voteReason : "") + "."));
       mid.appendChild(box);
     }
     row.appendChild(mid);
@@ -1041,19 +1057,24 @@ function toggle(date, which) {
   // Erneutes Antippen der aktiven Antwort nimmt sie zurück.
   if (which === "yes") { if (v > 0) delete next[date]; else next[date] = Date.now(); }
   else { if (v === 0) delete next[date]; else next[date] = 0; }
-  const data = { name: cur.name || myName, dates: next, votes: cur.votes || {} };
+  const data = { name: cur.name || myName, dates: next };
   docs.set(me, data);
   busy[date] = true;
   render();
   save(me, data).then(() => { delete busy[date]; render(); });
 }
 
+// Die Stimme liegt als Zahl 1 oder 2 im Eintrag der Person, unter dem Schlüssel «Datum:v» (neben den Antworten).
+function voteOf(uid, d) {
+  const v = docs.get(uid) && docs.get(uid).dates ? docs.get(uid).dates[d + ":v"] : 0;
+  return v === 1 || v === 2 ? v : 0;
+}
 function castVote(date, k) {
   if (!db || !me || busy[date] || date < iso(new Date())) return;
   const cur = docs.get(me) || { name: myName, dates: {} };
-  const votes = Object.assign({}, cur.votes || {});
-  if (votes[date] === k) delete votes[date]; else votes[date] = k;
-  const data = { name: cur.name || myName, dates: cur.dates || {}, votes };
+  const next = Object.assign({}, cur.dates || {});
+  if (next[date + ":v"] === k) delete next[date + ":v"]; else next[date + ":v"] = k;
+  const data = { name: cur.name || myName, dates: next };
   docs.set(me, data);
   busy[date] = true;
   render();
@@ -1064,7 +1085,7 @@ function choose(id, name) {
   me = id; myName = name;
   try { localStorage.setItem("tennis-me", id); localStorage.setItem("tennis-name", name); } catch (e) {}
   if (!docs.has(id)) {
-    const data = { name, dates: {}, votes: {} };
+    const data = { name, dates: {} };
     docs.set(id, data);
     save(id, data);
   }
@@ -1144,7 +1165,7 @@ if (configured) {
       const next = new Map();
       snap.forEach((d) => {
         const v = d.data();
-        if (v && typeof v.name === "string") next.set(d.id, { name: v.name, dates: (v.dates && typeof v.dates === "object") ? v.dates : {}, votes: (v.votes && typeof v.votes === "object") ? v.votes : {} });
+        if (v && typeof v.name === "string") next.set(d.id, { name: v.name, dates: (v.dates && typeof v.dates === "object") ? v.dates : {} });
       });
       docs = next; loaded = true;
       render();
