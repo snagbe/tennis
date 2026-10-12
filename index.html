@@ -787,8 +787,8 @@ function adminSave() {
     voteOpt1: $("admVoteOpt1").value.trim(), voteOpt2: $("admVoteOpt2").value.trim(), voteTie: num("admVoteTie"), voteReason: $("admVoteReason").value.trim()
   };
   const n = normSettings(v);
-  if (Object.keys(v).some((k) => JSON.stringify(n[k]) !== JSON.stringify(v[k]))) {
-    adminErr = "Bitte prüfe die Werte (Plätze 1–20, Daten, Uhrzeiten, Abstimmung ausgefüllt, letzter Termin nicht vor dem ersten)."; renderAdmin(); return;
+  if (Object.keys(v).some((k) => k !== "prioV" && JSON.stringify(n[k]) !== JSON.stringify(v[k]))) {
+    adminErr = "Bitte prüfe die Werte (Plätze 1–20, Daten, Uhrzeiten, Abstimmung ausgefüllt, letzter Termin nicht vor dem ersten)."; toast(adminErr); return;
   }
   adminErr = "";
   chain = chain.then(() => setDoc(doc(db, "settings", "config"), v))
