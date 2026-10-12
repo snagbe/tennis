@@ -779,7 +779,7 @@ function showTab() {
 
 function fmtShort(d) { return parse(d).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" }); }
 function renderRules() {
-  $("eyebrow").textContent = "Tennis · jeden " + parse(S.start).toLocaleDateString("de-DE", { weekday: "long" }) + " · " + fmtShort(S.start) + " bis " + fmtShort(S.end);
+  $("eyebrow").textContent = "Tennis · jeden " + parse(S.start).toLocaleDateString("de-DE", { weekday: "long" }) + " · 20:30–22:00 Uhr · " + fmtShort(S.start) + " bis " + fmtShort(S.end);
   $("filterFree").textContent = "Weniger als " + S.cap;
   $("howIntro").textContent = "Trag dich für alle Termine ein, an denen du kannst. Pro Termin spielen " + S.cap + " Personen. Die Reihenfolge ist:";
   const box = $("howRules"); box.replaceChildren();
