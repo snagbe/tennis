@@ -664,9 +664,10 @@ function renderCosts(c) {
     $costList.appendChild(row);
   });
 
-  $costHint.textContent = "Es zahlen die Personen, die sich mit «Ich kann» eingetragen haben und laut Aufstellung spielen (Reserve zahlt nicht). Sind weniger als " + S.minPresent + " da, zahlen alle " + everyone.length +
-    ". Die Hallenmiete von " + chf(S.costTotal) + " (letzter Termin " + fmtDay(S.end) + ") wird gleichmässig auf " + sessions.length +
-    " Freitage verteilt. Abgerechnet wird am Schluss. «Stand heute» zählt vergangene Termine, die Prognose die kommenden.";
+  $costHint.textContent = "Die Hallenmiete von " + chf(S.costTotal) + " wird gleichmässig auf " + sessions.length + " Freitage verteilt (" + chf(perSession) +
+    " pro Termin, letzter Termin " + fmtDay(S.end) + "). Pro Termin zahlen nur die Personen, die laut Aufstellung spielen (Reserve zahlt nicht). " +
+    "Spielen an einem einzelnen Termin weniger als " + S.minPresent + " Personen, zahlen für diesen Termin alle " + everyone.length +
+    " eingetragenen Personen. Abgerechnet wird am Schluss. «Stand heute» zählt vergangene Termine, die Prognose die kommenden.";
 }
 
 let authUser = null, adminDraft = null, adminErr = "";
