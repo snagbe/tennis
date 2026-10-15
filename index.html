@@ -387,7 +387,7 @@ details.past summary { cursor: pointer; font-weight: 600; }
       </section>
       <section class="panel" aria-labelledby="manageTitle">
         <h2 id="manageTitle">Personen verwalten</h2>
-        <p class="hint">Löschen entfernt eine Person mit allen ihren Antworten und lässt sich nicht rückgängig machen. Bereits festgehaltene vergangene Termine bleiben unverändert, kommende Termine werden neu verteilt.</p>
+        <p class="hint">Du kannst nur dich selbst löschen (die Person, die du unter «Wer bist du?» gewählt hast). Löschen entfernt eine Person mit allen ihren Antworten und lässt sich nicht rückgängig machen. Bereits festgehaltene vergangene Termine bleiben unverändert, kommende Termine werden neu verteilt.</p>
         <div class="manage" id="manageList"></div>
       </section>
       <details class="panel adminbox" id="adminBox">
@@ -691,7 +691,7 @@ function renderManage() {
       btns.appendChild(yes); btns.appendChild(no);
       box.appendChild(btns);
       row.appendChild(box);
-    } else {
+    } else if (id === me) {
       const b = el("button", null, "Löschen");
       b.type = "button"; b.dataset.del = id;
       b.disabled = !db;
@@ -1167,10 +1167,10 @@ document.querySelector(".tabbar").addEventListener("click", (ev) => {
 });
 $manageList.addEventListener("click", (ev) => {
   const del = ev.target.closest("button[data-del]");
-  if (del) { confirmDel = del.dataset.del; render(); return; }
+  if (del) { if (del.dataset.del !== me) return; confirmDel = del.dataset.del; render(); return; }
   if (ev.target.closest("button[data-delno]")) { confirmDel = null; render(); return; }
   const yes = ev.target.closest("button[data-delyes]");
-  if (yes) removePerson(yes.dataset.delyes);
+  if (yes && yes.dataset.delyes === me) removePerson(yes.dataset.delyes);
 });
 $whoList.addEventListener("click", (ev) => {
   const b = ev.target.closest("button[data-id]");
