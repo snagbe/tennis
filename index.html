@@ -21,6 +21,9 @@
   --ball-ink: #1d2a05;
   --reserve: #b4462f;
   --reserve-bg: #f6e3de;
+  --no: #d92d20;
+  --no-ink: #ffffff;
+  --no-bg: #fde4e1;
   --font-display: "Barlow Condensed", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
   --font-body: "Barlow", "Helvetica Neue", Arial, sans-serif;
 }
@@ -38,6 +41,9 @@
     --ball-ink: #1d2a05;
     --reserve: #e58a74;
     --reserve-bg: #3a211b;
+    --no: #ff5b4d;
+    --no-ink: #1a0503;
+    --no-bg: #4a1a16;
   }
 }
 * { box-sizing: border-box; }
@@ -137,7 +143,7 @@ details.how p { margin: 8px 0 0; color: var(--muted); font-size: 14px; max-width
   font: inherit; font-size: 14px; font-weight: 600; color: var(--ink); background: transparent;
   border: 1px solid var(--line); border-radius: 999px; padding: 8px 16px; cursor: pointer;
 }
-.filters button[data-filter="cant"][aria-pressed="true"] { background: var(--reserve); color: var(--bg); border-color: var(--reserve); box-shadow: 0 0 0 3px var(--reserve-bg); }
+.filters button[data-filter="cant"][aria-pressed="true"] { background: var(--no); color: var(--no-ink); border-color: var(--no); box-shadow: 0 0 0 3px var(--no-bg); }
 .filters button .cnt { font-weight: 700; }
 .filters button[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
 h3.month { font-family: var(--font-display); font-weight: 600; font-size: 1.3rem; letter-spacing: 0.04em; text-transform: uppercase; margin: 10px 0 0; color: var(--muted); }
@@ -172,8 +178,8 @@ h3.month { font-family: var(--font-display); font-weight: 600; font-size: 1.3rem
 }
 .act button.yes { border-color: var(--accent); color: var(--accent); }
 .act button.yes.on { background: var(--accent); color: var(--accent-ink); }
-.act button.no { border-color: var(--reserve); color: var(--reserve); }
-.act button.no.on { background: var(--reserve); color: var(--bg); border-color: var(--reserve); box-shadow: 0 0 0 3px var(--reserve-bg); }
+.act button.no { border-color: var(--no); color: var(--no); }
+.act button.no.on { background: var(--no); color: var(--no-ink); border-color: var(--no); box-shadow: 0 0 0 3px var(--no-bg); }
 .act button:disabled { opacity: 0.5; cursor: default; }
 .vote { border: 2px solid var(--accent); border-radius: 12px; padding: 12px; display: grid; gap: 10px; background: var(--surface); }
 .vote h4 { margin: 0; font-size: 16px; }
