@@ -178,7 +178,8 @@ h3.month { font-family: var(--font-display); font-weight: 600; font-size: 1.3rem
 }
 .act button.yes { border-color: var(--accent); color: var(--accent); }
 .act button.yes.on { background: var(--accent); color: var(--accent-ink); }
-.act button.no { border-color: var(--no); color: var(--no); }
+.act button.no { border-color: var(--no); color: var(--no); background: var(--no-bg); }
+.act button.no:disabled, .act button.no.on:disabled { opacity: 1; }
 .act button.no.on { background: var(--no); color: var(--no-ink); border-color: var(--no); box-shadow: 0 0 0 3px var(--no-bg); }
 .act button:disabled { opacity: 0.5; cursor: default; }
 .vote { border: 2px solid var(--accent); border-radius: 12px; padding: 12px; display: grid; gap: 10px; background: var(--surface); }
