@@ -333,7 +333,13 @@ details.past summary { cursor: pointer; font-weight: 600; }
       <div class="filters" role="group" aria-label="Termine filtern">
         <button type="button" data-filter="all" aria-pressed="true">Alle</button>
         <button type="button" id="filterFree" data-filter="free" aria-pressed="false">Weniger als 6</button>
+        <button type="button" id="filterFull" data-filter="full" aria-pressed="false">Voll</button>
+        <button type="button" id="filterExact" data-filter="exact" aria-pressed="false">Genau 6</button>
+        <button type="button" data-filter="reserve" aria-pressed="false">Mit Reserve</button>
+        <button type="button" id="filterLow" data-filter="low" aria-pressed="false">Unter 4</button>
         <button type="button" data-filter="mine" aria-pressed="false">Meine</button>
+        <button type="button" data-filter="play" aria-pressed="false">Ich spiele</button>
+        <button type="button" data-filter="none" aria-pressed="false">Ohne Antwort</button>
       </div>
       <div class="list" id="list"></div>
       <details class="past" id="past" hidden>
@@ -872,6 +878,9 @@ function renderRules() {
   const vt = $("howVote"); vt.hidden = !S.voteOn;
   if (S.voteOn) vt.textContent = "Sind wir bei einem Termin genau " + S.voteSize + ", stimmen die Spielenden ab " + voteDayName() + " " + String(S.voteHour).padStart(2, "0") + ":00 über das Spielsystem ab: Option 1 (" + S.voteOpt1 + ") oder Option 2 (" + S.voteOpt2 + "). Bei Gleichstand gewinnt Option " + S.voteTie + (S.voteReason ? ": " + S.voteReason : "") + ".";
   $("filterFree").textContent = "Weniger als " + S.cap;
+  $("filterFull").textContent = "Voll (" + S.cap + ")";
+  $("filterExact").textContent = "Genau " + S.voteSize;
+  $("filterLow").textContent = "Unter " + S.minPresent;
   $("howIntro").textContent = "Trag dich für alle Termine ein, an denen du kannst. Pro Termin spielen " + S.cap + " Personen. Die Reihenfolge ist:";
   const box = $("howRules"); box.replaceChildren();
   const list = S.prio.slice();
@@ -917,6 +926,12 @@ function render() {
     const mineState = isGoing ? "going" : (resIdx >= 0 ? "res" : (myVal === 0 ? "no" : "none"));
     if (filter === "mine" && (mineState === "none" || mineState === "no")) return;
     if (filter === "free" && r.going.length >= S.cap) return;
+    if (filter === "full" && r.going.length < S.cap) return;
+    if (filter === "exact" && r.going.length !== S.voteSize) return;
+    if (filter === "reserve" && !r.reserve.length) return;
+    if (filter === "low" && r.going.length >= S.minPresent) return;
+    if (filter === "play" && mineState !== "going") return;
+    if (filter === "none" && myVal !== undefined) return;
     const noList = [], openList = [];
     docs.forEach((v, id) => {
       const t = v.dates ? v.dates[d] : undefined;
@@ -1022,7 +1037,8 @@ function render() {
   if (!shown) {
     $list.appendChild(el("p", "empty",
       filter === "mine" ? "Du bist noch für keinen Termin eingetragen." :
-      filter === "free" ? "Alle kommenden Termine sind mit " + S.cap + " Personen besetzt." : "Keine kommenden Termine."));
+      filter === "none" ? "Du hast für alle kommenden Termine geantwortet." :
+      filter === "all" ? "Keine kommenden Termine." : "Kein kommender Termin passt zu diesem Filter."));
   }
 
   $pastList.replaceChildren();
