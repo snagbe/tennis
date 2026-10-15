@@ -882,7 +882,7 @@ function renderRules() {
   $("filterFree").textContent = "Weniger als " + S.cap;
   $("filterFull").textContent = "Voll (" + S.cap + ")";
   $("filterExact").textContent = "Genau " + S.voteSize;
-  $("filterEveryone").textContent = "Genau " + docs.size + " (alle da)";
+  $("filterEveryone").textContent = "Alle " + docs.size + " zugesagt";
   $("filterLow").textContent = "Unter " + S.minPresent;
   $("howIntro").textContent = "Trag dich für alle Termine ein, an denen du kannst. Pro Termin spielen " + S.cap + " Personen. Die Reihenfolge ist:";
   const box = $("howRules"); box.replaceChildren();
@@ -931,7 +931,7 @@ function render() {
     if (filter === "free" && r.going.length >= S.cap) return;
     if (filter === "full" && r.going.length < S.cap) return;
     if (filter === "exact" && r.going.length !== S.voteSize) return;
-    if (filter === "everyone" && !(docs.size && r.going.length === docs.size)) return;
+    if (filter === "everyone" && !(docs.size && r.going.length + r.reserve.length === docs.size)) return;
     if (filter === "reserve" && !r.reserve.length) return;
     if (filter === "low" && r.going.length >= S.minPresent) return;
     if (filter === "play" && mineState !== "going") return;
