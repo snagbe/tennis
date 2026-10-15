@@ -336,7 +336,7 @@ details.past summary { cursor: pointer; font-weight: 600; }
         <button type="button" id="filterFree" data-filter="free" aria-pressed="false">Weniger als 6</button>
         <button type="button" id="filterFull" data-filter="full" aria-pressed="false">Voll</button>
         <button type="button" id="filterExact" data-filter="exact" aria-pressed="false">Genau 6</button>
-        <button type="button" data-filter="eight" aria-pressed="false">Genau 8</button>
+        <button type="button" id="filterEveryone" data-filter="everyone" aria-pressed="false">Alle da</button>
         <button type="button" data-filter="reserve" aria-pressed="false">Mit Reserve</button>
         <button type="button" id="filterLow" data-filter="low" aria-pressed="false">Unter 4</button>
         <button type="button" data-filter="mine" aria-pressed="false">Meine</button>
@@ -882,6 +882,7 @@ function renderRules() {
   $("filterFree").textContent = "Weniger als " + S.cap;
   $("filterFull").textContent = "Voll (" + S.cap + ")";
   $("filterExact").textContent = "Genau " + S.voteSize;
+  $("filterEveryone").textContent = "Alle da (" + docs.size + ")";
   $("filterLow").textContent = "Unter " + S.minPresent;
   $("howIntro").textContent = "Trag dich für alle Termine ein, an denen du kannst. Pro Termin spielen " + S.cap + " Personen. Die Reihenfolge ist:";
   const box = $("howRules"); box.replaceChildren();
@@ -930,7 +931,7 @@ function render() {
     if (filter === "free" && r.going.length >= S.cap) return;
     if (filter === "full" && r.going.length < S.cap) return;
     if (filter === "exact" && r.going.length !== S.voteSize) return;
-    if (filter === "eight" && r.going.length !== 8) return;
+    if (filter === "everyone" && !(docs.size && r.going.length === docs.size)) return;
     if (filter === "reserve" && !r.reserve.length) return;
     if (filter === "low" && r.going.length >= S.minPresent) return;
     if (filter === "play" && mineState !== "going") return;
