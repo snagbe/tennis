@@ -343,6 +343,7 @@ details.past summary { cursor: pointer; font-weight: 600; }
         <button type="button" data-filter="play" aria-pressed="false">Ich spiele</button>
         <button type="button" data-filter="notplay" aria-pressed="false">Ich spiele nicht</button>
         <button type="button" data-filter="myres" aria-pressed="false">Ich bin Reserve</button>
+        <button type="button" data-filter="cant" aria-pressed="false">Ich kann nicht</button>
         <button type="button" data-filter="none" aria-pressed="false">Ohne Antwort</button>
       </div>
       <div class="list" id="list"></div>
@@ -938,6 +939,7 @@ function render() {
     if (filter === "low" && r.going.length >= S.minPresent) return;
     if (filter === "play" && mineState !== "going") return;
     if (filter === "notplay" && mineState === "going") return;
+    if (filter === "cant" && mineState !== "no") return;
     if (filter === "myres" && mineState !== "res") return;
     if (filter === "none" && myVal !== undefined) return;
     const noList = [], openList = [];
@@ -1050,6 +1052,7 @@ function render() {
   if (!shown) {
     $list.appendChild(el("p", "empty",
       filter === "mine" ? "Du bist noch für keinen Termin eingetragen." :
+      filter === "cant" ? "Du hast für keinen kommenden Termin abgesagt." :
       filter === "myres" ? "Du bist bei keinem kommenden Termin Reserve." :
       filter === "none" ? "Du hast für alle kommenden Termine geantwortet." :
       filter === "all" ? "Keine kommenden Termine." : "Kein kommender Termin passt zu diesem Filter."));
