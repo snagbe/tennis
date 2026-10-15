@@ -336,6 +336,7 @@ details.past summary { cursor: pointer; font-weight: 600; }
         <button type="button" id="filterFree" data-filter="free" aria-pressed="false">Weniger als 6</button>
         <button type="button" id="filterFull" data-filter="full" aria-pressed="false">Voll</button>
         <button type="button" id="filterExact" data-filter="exact" aria-pressed="false">Genau 6</button>
+        <button type="button" data-filter="eight" aria-pressed="false">Genau 8</button>
         <button type="button" data-filter="reserve" aria-pressed="false">Mit Reserve</button>
         <button type="button" id="filterLow" data-filter="low" aria-pressed="false">Unter 4</button>
         <button type="button" data-filter="mine" aria-pressed="false">Meine</button>
@@ -929,6 +930,7 @@ function render() {
     if (filter === "free" && r.going.length >= S.cap) return;
     if (filter === "full" && r.going.length < S.cap) return;
     if (filter === "exact" && r.going.length !== S.voteSize) return;
+    if (filter === "eight" && r.going.length !== 8) return;
     if (filter === "reserve" && !r.reserve.length) return;
     if (filter === "low" && r.going.length >= S.minPresent) return;
     if (filter === "play" && mineState !== "going") return;
