@@ -435,7 +435,7 @@ const PRIO_KEYS = ["plays", "avail", "bench", "last"];
 const DEFAULTS = { cap: 6, start: "2026-10-16", end: "2027-04-09", costTotal: 3600, minPresent: 4, prio: ["plays", "avail", "bench", "last"],
   timeFrom: "20:30", timeTo: "22:00",
   venues: "Gefu Swisskalb (Tennis / Hartplatz / Ballon) · MIDOMA (Tennis / Hartplatz / Ballon)",
-  unlimited: true, openDates: ["2026-10-16"],
+  costEqual: true, unlimited: true, openDates: ["2026-10-16"],
   voteOn: true, voteSize: 6, voteDaysBefore: 1, voteHour: 12,
   voteOpt1: "Platz 1 Doppel (2 vs. 2), Platz 2 Einzel Short Set (1 vs. 1)", voteOpt2: "Platz 1 und Platz 2 Kings (2 vs. 1)",
   voteTie: 1, voteReason: "wir müssen fürs Interclub Doppel üben" };
@@ -462,6 +462,7 @@ function normSettings(v) {
   if (time(v.timeFrom)) o.timeFrom = v.timeFrom;
   if (time(v.timeTo)) o.timeTo = v.timeTo;
   if (typeof v.venues === "string" && v.venues.length <= 300) o.venues = v.venues.trim();
+  if (typeof v.costEqual === "boolean") o.costEqual = v.costEqual;
   if (typeof v.unlimited === "boolean") o.unlimited = v.unlimited;
   if (Array.isArray(v.openDates)) o.openDates = v.openDates.filter((x, n, a) => validDate(x) && a.indexOf(x) === n);
   if (typeof v.voteOn === "boolean") o.voteOn = v.voteOn;
@@ -718,6 +719,16 @@ function renderPrices(sessionCount) {
   const hint = $("priceHint");
   if (!sessionCount) { hint.textContent = ""; return; }
   const per = S.costTotal / sessionCount, everyone = docs.size;
+  if (S.costEqual) {
+    if (!everyone) { hint.textContent = ""; return; }
+    const r = el("div", "crow");
+    r.appendChild(el("strong", null, "Alle " + everyone + " Personen"));
+    r.appendChild(el("span", "amt", chf(S.costTotal / everyone) + " pro Person"));
+    r.appendChild(el("span", "sub", chf(per / everyone) + " pro Freitag, egal ob anwesend oder nicht"));
+    box.appendChild(r);
+    hint.textContent = "Alle angemeldeten Personen zahlen gleich viel, ob sie an einem Freitag da sind oder nicht. " + chf(S.costTotal) + " für " + sessionCount + " Freitage, geteilt durch " + everyone + " Personen.";
+    return;
+  }
   const top = Math.max(S.cap, S.unlimited || S.openDates.length ? everyone : 0);
   const row = (label, amt, sub) => {
     const r = el("div", "crow");
@@ -747,7 +758,7 @@ function renderCosts(c) {
   const allPayDays = [];
   sessions.forEach((d) => {
     const present = presentOn(d, c).filter((id) => docs.has(id));
-    const allPay = present.length < S.minPresent;
+    const allPay = S.costEqual || present.length < S.minPresent;
     const payers = allPay ? everyone : present;
     if (allPay) allPayDays.push(d);
     if (!payers.length) return;
@@ -768,6 +779,11 @@ function renderCosts(c) {
     $costList.appendChild(row);
   });
 
+  if (S.costEqual) {
+    $costHint.textContent = "Alle " + everyone.length + " angemeldeten Personen zahlen gleich viel, ob sie an einem Freitag da sind oder nicht. Die Hallenmiete von " + chf(S.costTotal) + " (letzter Termin " + fmtDay(S.end) + ") wird gleichmässig auf " + sessions.length +
+      " Freitage und alle Personen verteilt. Abgerechnet wird am Schluss. «Stand heute» zählt vergangene Termine, die Prognose die kommenden.";
+    return;
+  }
   $costHint.textContent = "Die Hallenmiete von " + chf(S.costTotal) + " wird gleichmässig auf " + sessions.length + " Freitage verteilt (" + chf(perSession) +
     " pro Termin, letzter Termin " + fmtDay(S.end) + "). Pro Termin zahlen nur die Personen, die laut Aufstellung spielen" + (S.unlimited ? ". " : " (Reserve zahlt nicht). ") +
     "Spielen an einem einzelnen Termin weniger als " + S.minPresent + " Personen, zahlen für diesen Termin alle " + everyone.length +
@@ -802,6 +818,9 @@ function renderAdmin() {
   body.appendChild(field("admStart", "Erster Termin", "date", S.start));
   body.appendChild(field("admEnd", "Letzter Termin", "date", S.end));
   body.appendChild(field("admCost", "Kosten gesamt (Fr.)", "number", S.costTotal, { min: 0, step: "0.05", inputmode: "decimal" }));
+  const cl = el("label", null, "Alle zahlen gleich viel, egal ob anwesend oder nicht");
+  const cc = el("input"); cc.type = "checkbox"; cc.id = "admCostEqual"; cc.checked = S.costEqual; cl.appendChild(cc);
+  body.appendChild(cl);
   body.appendChild(field("admMin", "Weniger Spielende als … : alle zahlen", "number", S.minPresent, { min: 0, max: 20, inputmode: "numeric" }));
   body.appendChild(field("admFrom", "Beginn (Uhrzeit)", "time", S.timeFrom));
   body.appendChild(field("admTo", "Ende (Uhrzeit)", "time", S.timeTo));
@@ -844,7 +863,7 @@ function renderAdmin() {
 function adminSave() {
   const num = (id) => Number($(id).value);
   const v = {
-    cap: num("admCap"), start: $("admStart").value, end: $("admEnd").value, costTotal: num("admCost"), minPresent: num("admMin"),
+    cap: num("admCap"), start: $("admStart").value, end: $("admEnd").value, costTotal: num("admCost"), minPresent: num("admMin"), costEqual: $("admCostEqual").checked,
     prio: adminDraft.prio.slice(), prioV: 2,
     timeFrom: $("admFrom").value, timeTo: $("admTo").value, venues: $("admVenues").value.trim(),
     unlimited: $("admUnlimited").checked,
