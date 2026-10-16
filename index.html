@@ -775,7 +775,7 @@ function renderCosts(c) {
     const row = el("div", "crow" + (id === me ? " me" : ""));
     row.appendChild(el("strong", null, nameOf(id) + (id === me ? " (du)" : "")));
     row.appendChild(el("span", "amt", chf(paid[id] + planned[id])));
-    row.appendChild(el("span", "sub", "Stand heute " + chf(paid[id]) + " · Prognose noch " + chf(planned[id]) + " · bei " + cnt[id] + " Terminen"));
+    if (!S.costEqual) row.appendChild(el("span", "sub", "Stand heute " + chf(paid[id]) + " · Prognose noch " + chf(planned[id]) + " · bei " + cnt[id] + " Terminen"));
     $costList.appendChild(row);
   });
 
