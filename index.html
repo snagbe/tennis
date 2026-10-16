@@ -435,7 +435,7 @@ const PRIO_KEYS = ["plays", "avail", "bench", "last"];
 const DEFAULTS = { cap: 6, start: "2026-10-16", end: "2027-04-09", costTotal: 3600, minPresent: 4, prio: ["plays", "avail", "bench", "last"],
   timeFrom: "20:30", timeTo: "22:00",
   venues: "Gefu Swisskalb (Tennis / Hartplatz / Ballon) · MIDOMA (Tennis / Hartplatz / Ballon)",
-  openDates: ["2026-10-16"],
+  unlimited: true, openDates: ["2026-10-16"],
   voteOn: true, voteSize: 6, voteDaysBefore: 1, voteHour: 12,
   voteOpt1: "Platz 1 Doppel (2 vs. 2), Platz 2 Einzel Short Set (1 vs. 1)", voteOpt2: "Platz 1 und Platz 2 Kings (2 vs. 1)",
   voteTie: 1, voteReason: "wir müssen fürs Interclub Doppel üben" };
@@ -462,6 +462,7 @@ function normSettings(v) {
   if (time(v.timeFrom)) o.timeFrom = v.timeFrom;
   if (time(v.timeTo)) o.timeTo = v.timeTo;
   if (typeof v.venues === "string" && v.venues.length <= 300) o.venues = v.venues.trim();
+  if (typeof v.unlimited === "boolean") o.unlimited = v.unlimited;
   if (Array.isArray(v.openDates)) o.openDates = v.openDates.filter((x, n, a) => validDate(x) && a.indexOf(x) === n);
   if (typeof v.voteOn === "boolean") o.voteOn = v.voteOn;
   if (int(v.voteSize, 2, 20)) o.voteSize = v.voteSize;
@@ -582,7 +583,7 @@ function compute() {
       for (let n = 0; n < order.length; n++) { const r = order[n](x, y); if (r) return r; }
       return luck(d, x.uid) - luck(d, y.uid) || (x.uid < y.uid ? -1 : 1);
     });
-    const open = S.openDates.indexOf(d) >= 0;
+    const open = S.unlimited || S.openDates.indexOf(d) >= 0;
     const going = open ? av : av.slice(0, S.cap), reserve = open ? [] : av.slice(S.cap);
     going.forEach((e) => {
       counts[e.uid] = (counts[e.uid] || 0) + 1; lastPlay[e.uid] = d;
@@ -717,7 +718,7 @@ function renderPrices(sessionCount) {
   const hint = $("priceHint");
   if (!sessionCount) { hint.textContent = ""; return; }
   const per = S.costTotal / sessionCount, everyone = docs.size;
-  const top = Math.max(S.cap, S.openDates.length ? everyone : 0);
+  const top = Math.max(S.cap, S.unlimited || S.openDates.length ? everyone : 0);
   const row = (label, amt, sub) => {
     const r = el("div", "crow");
     r.appendChild(el("strong", null, label));
@@ -732,7 +733,7 @@ function renderPrices(sessionCount) {
   if (lo >= 2) {
     row((lo === 2 ? "2 Personen" : "2 bis " + lo + " Personen") + " spielen", everyone ? chf(per / everyone) + " pro Person" : "–", everyone ? "Alle " + everyone + " angemeldeten Personen zahlen (alleine geht nicht)" : "Alle angemeldeten Personen zahlen");
   }
-  hint.textContent = "Pro Freitag werden " + chf(per) + " fällig (" + chf(S.costTotal) + " für " + sessionCount + " Freitage). Es zahlen die Spielenden. Reserve zahlt nicht. Zur Information, die genauen Beträge pro Person stehen oben unter «Wer zahlt was».";
+  hint.textContent = "Pro Freitag werden " + chf(per) + " fällig (" + chf(S.costTotal) + " für " + sessionCount + " Freitage). Es zahlen die Spielenden" + (S.unlimited ? "" : ". Reserve zahlt nicht") + ". Zur Information, die genauen Beträge pro Person stehen oben unter «Wer zahlt was».";
 }
 function renderCosts(c) {
   $costSum.replaceChildren(); $costList.replaceChildren();
@@ -768,7 +769,7 @@ function renderCosts(c) {
   });
 
   $costHint.textContent = "Die Hallenmiete von " + chf(S.costTotal) + " wird gleichmässig auf " + sessions.length + " Freitage verteilt (" + chf(perSession) +
-    " pro Termin, letzter Termin " + fmtDay(S.end) + "). Pro Termin zahlen nur die Personen, die laut Aufstellung spielen (Reserve zahlt nicht). " +
+    " pro Termin, letzter Termin " + fmtDay(S.end) + "). Pro Termin zahlen nur die Personen, die laut Aufstellung spielen" + (S.unlimited ? ". " : " (Reserve zahlt nicht). ") +
     "Spielen an einem einzelnen Termin weniger als " + S.minPresent + " Personen, zahlen für diesen Termin alle " + everyone.length +
     " eingetragenen Personen. Abgerechnet wird am Schluss. «Stand heute» zählt vergangene Termine, die Prognose die kommenden.";
 }
@@ -820,6 +821,9 @@ function renderAdmin() {
     pr.appendChild(row);
   });
   body.appendChild(pr);
+  const ul = el("label", null, "Keine Platzbegrenzung: alle mit «Ich kann» spielen, keine Reserve");
+  const uc = el("input"); uc.type = "checkbox"; uc.id = "admUnlimited"; uc.checked = S.unlimited; ul.appendChild(uc);
+  body.appendChild(ul);
   body.appendChild(field("admOpen", "Offene Termine ohne Platzbegrenzung (Daten JJJJ-MM-TT, mit Komma getrennt)", "text", S.openDates.join(", "), { maxlength: 300 }));
   body.appendChild(el("p", "hint", "Abstimmung zum Spielsystem"));
   const vl = el("label", null, "Abstimmung aktiv");
@@ -843,6 +847,7 @@ function adminSave() {
     cap: num("admCap"), start: $("admStart").value, end: $("admEnd").value, costTotal: num("admCost"), minPresent: num("admMin"),
     prio: adminDraft.prio.slice(), prioV: 2,
     timeFrom: $("admFrom").value, timeTo: $("admTo").value, venues: $("admVenues").value.trim(),
+    unlimited: $("admUnlimited").checked,
     openDates: $("admOpen").value.split(/[\s,;]+/).filter(Boolean),
     voteOn: $("admVoteOn").checked, voteSize: num("admVoteSize"), voteDaysBefore: num("admVoteDays"), voteHour: num("admVoteHour"),
     voteOpt1: $("admVoteOpt1").value.trim(), voteOpt2: $("admVoteOpt2").value.trim(), voteTie: num("admVoteTie"), voteReason: $("admVoteReason").value.trim()
@@ -914,8 +919,8 @@ function voteDayName() {
 function renderRules() {
   $("eyebrow").textContent = "Tennis · jeden " + parse(S.start).toLocaleDateString("de-DE", { weekday: "long" }) + " · " + S.timeFrom + "–" + S.timeTo + " Uhr · " + fmtShort(S.start) + " bis " + fmtShort(S.end);
   $("venues").textContent = S.venues ? "Plätze: " + S.venues : ""; $("venues").hidden = !S.venues;
-  const ho = $("howOpen"); ho.hidden = !S.openDates.length;
-  ho.textContent = S.openDates.length ? "Offene Termine (" + S.openDates.map(fmtShort).join(", ") + "): Alle, die «Ich kann» wählen, spielen mit. Es gibt keine Platzbegrenzung und keine Reserve." : "";
+  const ho = $("howOpen"); ho.hidden = S.unlimited || !S.openDates.length;
+  ho.textContent = S.unlimited || !S.openDates.length ? "" :  "Offene Termine (" + S.openDates.map(fmtShort).join(", ") + "): Alle, die «Ich kann» wählen, spielen mit. Es gibt keine Platzbegrenzung und keine Reserve.";
   const vt = $("howVote"); vt.hidden = !S.voteOn;
   if (S.voteOn) vt.textContent = "Sind wir bei einem Termin genau " + S.voteSize + ", stimmen die Spielenden ab " + voteDayName() + " " + String(S.voteHour).padStart(2, "0") + ":00 über das Spielsystem ab: Option 1 (" + S.voteOpt1 + ") oder Option 2 (" + S.voteOpt2 + "). Bei Gleichstand gewinnt Option " + S.voteTie + (S.voteReason ? ": " + S.voteReason : "") + ".";
   $("filterFree").textContent = "Weniger als " + S.cap;
@@ -923,8 +928,20 @@ function renderRules() {
   $("filterExact").textContent = "Genau " + S.voteSize;
   $("filterEveryone").textContent = "Alle " + docs.size + " zugesagt";
   $("filterLow").textContent = "Unter " + S.minPresent;
-  $("howIntro").textContent = "Trag dich für alle Termine ein, an denen du kannst. Pro Termin spielen " + S.cap + " Personen. Die Reihenfolge ist:";
+  ["free", "full", "reserve", "myres"].forEach((f) => {
+    const fb = document.querySelector('.filters button[data-filter="' + f + '"]');
+    if (fb) fb.hidden = S.unlimited;
+  });
+  if (S.unlimited && ["free", "full", "reserve", "myres"].indexOf(filter) >= 0) {
+    filter = "all";
+    document.querySelectorAll(".filters button").forEach((x) => x.setAttribute("aria-pressed", x.dataset.filter === "all" ? "true" : "false"));
+  }
   const box = $("howRules"); box.replaceChildren();
+  if (S.unlimited) {
+    $("howIntro").textContent = "Trag dich für alle Termine ein, an denen du kannst. Es gibt keine Platzbegrenzung und keine Reserve: Wer «Ich kann» wählt, spielt mit. Wer nicht kann, wählt «Kann nicht».";
+    return;
+  }
+  $("howIntro").textContent = "Trag dich für alle Termine ein, an denen du kannst. Pro Termin spielen " + S.cap + " Personen. Die Reihenfolge ist:";
   const list = S.prio.slice();
   list.forEach((k, n) => {
     box.appendChild(el("p", null, (n + 1) + ". " + PRIO_TEXT[k]));
@@ -1001,14 +1018,14 @@ function render() {
 
     const mid = el("div", "mid");
     const seats = el("div", "seats");
-    const seatCount = Math.max(S.cap, r.going.length);
+    const seatCount = r.open ? r.going.length : Math.max(S.cap, r.going.length);
     for (let i = 0; i < seatCount; i++) {
       let cls = "dot";
       if (i < r.going.length) cls += r.going[i].uid === me ? " taken mine" : " taken";
       seats.appendChild(el("span", cls));
     }
-    seats.appendChild(el("span", "count", r.open ? String(r.going.length) : r.going.length + " / " + S.cap));
-    if (r.open) seats.appendChild(el("span", "pill next", "Offen für alle"));
+    seats.appendChild(el("span", "count", r.open ? r.going.length + (r.going.length === 1 ? " Person" : " Personen") : r.going.length + " / " + S.cap));
+    if (r.open && !S.unlimited) seats.appendChild(el("span", "pill next", "Offen für alle"));
     if (idx === 0) seats.appendChild(el("span", "pill next", "Nächstes Training"));
     if (r.reserve.length) seats.appendChild(el("span", "pill over", r.reserve.length + " in Reserve"));
     mid.appendChild(seats);
