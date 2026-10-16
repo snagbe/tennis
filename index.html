@@ -728,9 +728,9 @@ function renderPrices(sessionCount) {
   for (let n = top; n >= Math.max(S.minPresent, 1); n--) {
     row(n + (n === 1 ? " Person spielt" : " Personen spielen"), chf(per / n) + " pro Person", n === S.cap ? "Normalfall: alle Plätze besetzt" : (n > S.cap ? "Nur an offenen Terminen" : ""));
   }
-  if (S.minPresent > 1) {
-    const lo = S.minPresent - 1;
-    row("Weniger als " + S.minPresent + " (höchstens " + lo + ")", everyone ? chf(per / everyone) + " pro Person" : "–", everyone ? "Alle " + everyone + " angemeldeten Personen zahlen" : "Alle angemeldeten Personen zahlen");
+  const lo = S.minPresent - 1;
+  if (lo >= 2) {
+    row((lo === 2 ? "2 Personen" : "2 bis " + lo + " Personen") + " spielen", everyone ? chf(per / everyone) + " pro Person" : "–", everyone ? "Alle " + everyone + " angemeldeten Personen zahlen (alleine geht nicht)" : "Alle angemeldeten Personen zahlen");
   }
   hint.textContent = "Pro Freitag werden " + chf(per) + " fällig (" + chf(S.costTotal) + " für " + sessionCount + " Freitage). Es zahlen die Spielenden. Reserve zahlt nicht. Zur Information, die genauen Beträge pro Person stehen oben unter «Wer zahlt was».";
 }
