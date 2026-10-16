@@ -404,6 +404,11 @@ details.past summary { cursor: pointer; font-weight: 600; }
         <div id="costList"></div>
         <p class="hint" id="costHint"></p>
       </section>
+      <section class="panel" aria-labelledby="priceTitle">
+        <h2 id="priceTitle">Preis pro Freitag</h2>
+        <div id="priceList"></div>
+        <p class="hint" id="priceHint"></p>
+      </section>
     </section>
   </main>
 
@@ -707,9 +712,32 @@ function presentOn(d, c) {
   const r = c.out[d];
   return r ? r.going.map((e) => e.uid) : [];
 }
+function renderPrices(sessionCount) {
+  const box = $("priceList"); box.replaceChildren();
+  const hint = $("priceHint");
+  if (!sessionCount) { hint.textContent = ""; return; }
+  const per = S.costTotal / sessionCount, everyone = docs.size;
+  const top = Math.max(S.cap, S.openDates.length ? everyone : 0);
+  const row = (label, amt, sub) => {
+    const r = el("div", "crow");
+    r.appendChild(el("strong", null, label));
+    r.appendChild(el("span", "amt", amt));
+    if (sub) r.appendChild(el("span", "sub", sub));
+    box.appendChild(r);
+  };
+  for (let n = top; n >= Math.max(S.minPresent, 1); n--) {
+    row(n + (n === 1 ? " Person spielt" : " Personen spielen"), chf(per / n) + " pro Person", n === S.cap ? "Normalfall: alle Plätze besetzt" : (n > S.cap ? "Nur an offenen Terminen" : ""));
+  }
+  if (S.minPresent > 1) {
+    const lo = S.minPresent - 1;
+    row("Weniger als " + S.minPresent + " (höchstens " + lo + ")", everyone ? chf(per / everyone) + " pro Person" : "–", everyone ? "Alle " + everyone + " angemeldeten Personen zahlen" : "Alle angemeldeten Personen zahlen");
+  }
+  hint.textContent = "Pro Freitag werden " + chf(per) + " fällig (" + chf(S.costTotal) + " für " + sessionCount + " Freitage). Es zahlen die Spielenden. Reserve zahlt nicht. Zur Information, die genauen Beträge pro Person stehen oben unter «Wer zahlt was».";
+}
 function renderCosts(c) {
   $costSum.replaceChildren(); $costList.replaceChildren();
   const sessions = dates.filter((d) => d <= S.end);
+  renderPrices(sessions.length);
   const everyone = Array.from(docs.keys());
   if (!loaded || !everyone.length || !sessions.length) { $costHint.textContent = "Sobald Personen eingetragen sind, siehst du hier die Kosten."; return; }
   const perSession = S.costTotal / sessions.length;
